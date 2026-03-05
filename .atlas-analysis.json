@@ -1,0 +1,131 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "React Grab",
+  "projectDescription": "Select context for coding agents directly from your website by hovering and pressing Cmd+C to copy file names, React components, and HTML source code",
+  "theme": "palm",
+  "primaryColor": "#fc41e0",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/how-it-works",
+              "concepts/activation-modes",
+              "concepts/element-selection"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/nextjs",
+              "guides/vite",
+              "guides/webpack",
+              "guides/manual-installation"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/mcp",
+              "integrations/cursor",
+              "integrations/claude-code",
+              "integrations/copilot",
+              "integrations/opencode"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/plugins",
+              "advanced/theming",
+              "advanced/custom-actions",
+              "advanced/agent-providers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/init",
+              "api/react-grab-api",
+              "api/options"
+            ]
+          },
+          {
+            "group": "Types",
+            "pages": [
+              "api/types/theme",
+              "api/types/plugin",
+              "api/types/agent",
+              "api/types/actions"
+            ]
+          },
+          {
+            "group": "React Integration",
+            "pages": [
+              "api/react/use-react-grab"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "api/cli/init",
+              "api/cli/add",
+              "api/cli/remove",
+              "api/cli/configure"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "One-keystroke element context extraction (Cmd+C or Ctrl+C)",
+    "Automatic React component and file path detection",
+    "Visual overlay with selection box, drag selection, and crosshair",
+    "Plugin system with custom actions and lifecycle hooks",
+    "AI agent integration with streaming support",
+    "MCP (Model Context Protocol) server support",
+    "Built-in integrations for Cursor, Claude Code, Copilot, and OpenCode",
+    "Customizable themes and activation modes",
+    "CLI tool for automated project setup",
+    "React Fiber debugging and source mapping"
+  ],
+  "publicApiSurface": [
+    "init() - Initialize React Grab",
+    "ReactGrabAPI.activate() - Activate element selection mode",
+    "ReactGrabAPI.deactivate() - Deactivate selection mode",
+    "ReactGrabAPI.toggle() - Toggle activation state",
+    "ReactGrabAPI.copyElement() - Programmatically copy element context",
+    "ReactGrabAPI.getSource() - Get source file info for element",
+    "ReactGrabAPI.registerPlugin() - Register custom plugin",
+    "ReactGrabAPI.unregisterPlugin() - Remove plugin",
+    "ReactGrabAPI.setOptions() - Update runtime options",
+    "ReactGrabAPI.getState() - Get current state",
+    "window.__REACT_GRAB__ - Global API instance",
+    "commentPlugin - Built-in comment action plugin",
+    "openPlugin - Built-in open file plugin",
+    "generateSnippet() - Generate HTML snippet from element",
+    "Plugin interface - Create custom plugins with actions and hooks",
+    "AgentProvider interface - Integrate AI agent providers",
+    "Theme interface - Customize visual appearance",
+    "Options interface - Configure behavior"
+  ]
+}
