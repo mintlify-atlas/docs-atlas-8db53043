@@ -1,0 +1,192 @@
+---
+title: "Utility Functions"
+description: "Additional utility functions exported by React Grab"
+---
+
+## Overview
+
+React Grab exports several utility functions for advanced use cases. These functions provide low-level access to React Grab's internals.
+
+## Functions
+
+### getStack()
+
+```typescript
+function getStack(element: Element): Promise<StackFrame[] | null>
+```
+
+Get the React stack frames for a given element. Returns stack information from React's internal fiber tree.
+
+<ParamField path="element" type="Element" required>
+  The DOM element to get stack information for
+</ParamField>
+
+<ResponseField name="stackFrames" type="StackFrame[] | null">
+  Array of stack frames containing component information, or null if instrumentation is not active
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getStack } from 'react-grab';
+
+const element = document.querySelector('.my-component');
+const stack = await getStack(element);
+console.log(stack);
+```
+
+### formatElementInfo()
+
+```typescript
+function formatElementInfo(element: Element): Promise<string>
+```
+
+Format element information into a human-readable string. This is the same formatting used when copying element context.
+
+<ParamField path="element" type="Element" required>
+  The DOM element to format information for
+</ParamField>
+
+<ResponseField name="info" type="string">
+  Formatted string containing element context (tag name, component name, file path, line number)
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { formatElementInfo } from 'react-grab';
+
+const element = document.querySelector('.my-component');
+const info = await formatElementInfo(element);
+console.log(info);
+// Output: <div class="my-component" />
+// in MyComponent at components/my-component.tsx:42:5
+```
+
+### isInstrumentationActive()
+
+```typescript
+function isInstrumentationActive(): boolean
+```
+
+Check if React instrumentation is currently active. Returns `true` if React Grab can access React's internal fiber tree for debugging.
+
+<ResponseField name="active" type="boolean">
+  Whether React instrumentation is active
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isInstrumentationActive } from 'react-grab';
+
+if (isInstrumentationActive()) {
+  console.log('React Grab can access React internals');
+} else {
+  console.warn('React instrumentation not available');
+}
+```
+
+### getGlobalApi()
+
+```typescript
+function getGlobalApi(): ReactGrabAPI | null
+```
+
+Get the global React Grab API instance. Returns the API instance stored in `window.__REACT_GRAB__` or the internal global reference.
+
+<ResponseField name="api" type="ReactGrabAPI | null">
+  The global API instance, or null if React Grab has not been initialized
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getGlobalApi } from 'react-grab';
+
+const api = getGlobalApi();
+if (api) {
+  api.activate();
+}
+```
+
+### setGlobalApi()
+
+```typescript
+function setGlobalApi(api: ReactGrabAPI | null): void
+```
+
+Set or clear the global React Grab API instance. This updates both `window.__REACT_GRAB__` and the internal global reference.
+
+<ParamField path="api" type="ReactGrabAPI | null" required>
+  The API instance to set globally, or null to clear
+</ParamField>
+
+**Example:**
+
+```typescript
+import { init, setGlobalApi } from 'react-grab';
+
+const api = init();
+setGlobalApi(api);
+
+// Later, to cleanup:
+setGlobalApi(null);
+```
+
+### generateSnippet()
+
+```typescript
+function generateSnippet(element: Element): string
+```
+
+Generate an HTML snippet representation of an element. Useful for creating preview snippets or copying HTML structure.
+
+<ParamField path="element" type="Element" required>
+  The DOM element to generate a snippet for
+</ParamField>
+
+<ResponseField name="snippet" type="string">
+  HTML string representation of the element
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { generateSnippet } from 'react-grab';
+
+const element = document.querySelector('.my-component');
+const snippet = generateSnippet(element);
+console.log(snippet);
+// Output: <div class="my-component">...</div>
+```
+
+## Constants
+
+### DEFAULT_THEME
+
+```typescript
+const DEFAULT_THEME: Required<Theme>
+```
+
+The default theme configuration used by React Grab. Contains all theme properties with their default values.
+
+**Example:**
+
+```typescript
+import { init, DEFAULT_THEME } from 'react-grab';
+
+const api = init({
+  // Start with defaults and override specific properties
+  theme: {
+    ...DEFAULT_THEME,
+    hue: 280,
+  },
+});
+```
+
+## See Also
+
+- [init()](/api/init) - Initialize React Grab
+- [ReactGrabAPI](/api/react-grab-api) - Main API interface
+- [Theme](/api/types/theme) - Theme configuration

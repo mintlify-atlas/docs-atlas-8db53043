@@ -83,7 +83,8 @@
             "pages": [
               "api/init",
               "api/react-grab-api",
-              "api/options"
+              "api/options",
+              "api/utilities"
             ]
           },
           {

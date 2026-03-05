@@ -69,14 +69,14 @@ const api = init({
 
 ### keyHoldDuration
 
-<ParamField path="keyHoldDuration" type="number" default="120">
+<ParamField path="keyHoldDuration" type="number" default="100">
   Duration in milliseconds to hold the activation key before activation.
 </ParamField>
 
 **Description:**
 - Prevents accidental activation when using the keyboard for normal copy operations
 - Only applies when the activation key is initially pressed
-- Minimum recommended value: `100`ms
+- Default value: `100`ms
 
 **Example:**
 ```typescript
