@@ -1,0 +1,378 @@
+---
+title: 'Action Types'
+description: 'ContextMenuAction, ToolbarMenuAction, and ActionContext interfaces'
+---
+
+## ContextMenuAction
+
+Defines a custom action that appears in the context menu when elements are selected.
+
+### Properties
+
+<ParamField path="id" type="string" required>
+  Unique identifier for this action. Used for deduplication and tracking.
+</ParamField>
+
+<ParamField path="label" type="string" required>
+  Display text shown in the context menu.
+</ParamField>
+
+<ParamField path="target" type="'context-menu'">
+  Optional target specification. Use "context-menu" to explicitly mark this as a context menu action.
+</ParamField>
+
+<ParamField path="shortcut" type="string">
+  Keyboard shortcut hint displayed next to the action. Example: "⌘K" or "Ctrl+K".
+</ParamField>
+
+<ParamField path="enabled" type="boolean | ((context: ActionContext) => boolean)">
+  Whether this action is enabled. Can be a boolean or a function that receives the action context and returns a boolean. Disabled actions appear greyed out.
+</ParamField>
+
+<ParamField path="onAction" type="(context: ContextMenuActionContext) => void | Promise<void>" required>
+  Called when the action is triggered. Receives the action context with element data and helper functions.
+</ParamField>
+
+<ParamField path="agent" type="AgentOptions">
+  Optional agent configuration. When provided, this action can trigger AI-assisted operations. See [AgentOptions](/api/types/agent#agentoptions).
+</ParamField>
+
+## ToolbarMenuAction
+
+Defines a custom action that appears in the toolbar dropdown menu.
+
+### Properties
+
+<ParamField path="id" type="string" required>
+  Unique identifier for this action.
+</ParamField>
+
+<ParamField path="label" type="string" required>
+  Display text shown in the toolbar menu.
+</ParamField>
+
+<ParamField path="shortcut" type="string">
+  Keyboard shortcut hint. Example: "⌘K" or "Ctrl+K".
+</ParamField>
+
+<ParamField path="target" type="'toolbar'" required>
+  Must be "toolbar" to identify this as a toolbar action.
+</ParamField>
+
+<ParamField path="enabled" type="boolean | (() => boolean)">
+  Whether this action is enabled. Can be a boolean or a function that returns a boolean.
+</ParamField>
+
+<ParamField path="isActive" type="() => boolean">
+  Function that returns whether this action is currently active. Active actions are visually highlighted.
+</ParamField>
+
+<ParamField path="onAction" type="() => void | Promise<void>" required>
+  Called when the action is triggered. No context is provided for toolbar actions.
+</ParamField>
+
+## ActionContext
+
+Context object passed to action handlers with information about selected elements and helper functions.
+
+### Properties
+
+<ParamField path="element" type="Element" required>
+  The primary selected element. If multiple elements are selected, this is typically the first one.
+</ParamField>
+
+<ParamField path="elements" type="Element[]" required>
+  Array of all selected elements.
+</ParamField>
+
+<ParamField path="filePath" type="string">
+  File path where the element's component is defined.
+</ParamField>
+
+<ParamField path="lineNumber" type="number">
+  Line number where the element's component is defined.
+</ParamField>
+
+<ParamField path="componentName" type="string">
+  Name of the React component for this element.
+</ParamField>
+
+<ParamField path="tagName" type="string">
+  HTML tag name of the element (lowercase).
+</ParamField>
+
+<ParamField path="enterPromptMode" type="(agent?: AgentOptions) => void">
+  Function to enter prompt mode for AI-assisted operations. Optionally pass agent configuration.
+</ParamField>
+
+<ParamField path="hooks" type="ActionContextHooks" required>
+  Helper hooks for common operations. See [ActionContextHooks](#actioncontexthooks).
+</ParamField>
+
+<ParamField path="performWithFeedback" type="(action: () => Promise<boolean>) => Promise<void>" required>
+  Execute an async action with visual feedback. Shows success/error flash based on return value.
+  
+  - Return `true` for success (shows success flash)
+  - Return `false` for failure (shows error state)
+  - Throws errors are caught and shown as errors
+</ParamField>
+
+<ParamField path="hideContextMenu" type="() => void" required>
+  Programmatically hide the context menu.
+</ParamField>
+
+<ParamField path="cleanup" type="() => void" required>
+  Clean up any temporary state or UI elements. Call before exiting action.
+</ParamField>
+
+## ContextMenuActionContext
+
+Extends `ActionContext` with additional context menu-specific functionality.
+
+### Properties
+
+Inherits all properties from [ActionContext](#actioncontext) plus:
+
+<ParamField path="copy" type="() => void">
+  Helper function to copy selected elements to clipboard using default behavior.
+</ParamField>
+
+## ActionContextHooks
+
+Helper hooks provided in the action context for common operations.
+
+### Properties
+
+<ParamField path="transformHtmlContent" type="(html: string, elements: Element[]) => Promise<string>" required>
+  Transform HTML content through all registered plugin transform hooks.
+</ParamField>
+
+<ParamField path="onOpenFile" type="(filePath: string, lineNumber?: number) => boolean | void" required>
+  Trigger file opening with plugin hooks. Returns false if opening was prevented.
+</ParamField>
+
+<ParamField path="transformOpenFileUrl" type="(url: string, filePath: string, lineNumber?: number) => string" required>
+  Transform file opening URL through all registered plugin hooks.
+</ParamField>
+
+## Usage
+
+### Basic Context Menu Action
+
+```tsx
+import { ContextMenuAction } from 'react-grab';
+
+const logAction: ContextMenuAction = {
+  id: 'log-element',
+  label: 'Log to Console',
+  shortcut: '⌘L',
+  onAction: (context) => {
+    console.log('Selected element:', context.element);
+    console.log('Tag:', context.tagName);
+    console.log('Component:', context.componentName);
+    console.log('Total selected:', context.elements.length);
+  }
+};
+```
+
+### Conditional Action Enabling
+
+```tsx
+const openFileAction: ContextMenuAction = {
+  id: 'open-file',
+  label: 'Open in Editor',
+  enabled: (context) => {
+    // Only enable if we have file location info
+    return !!context.filePath;
+  },
+  onAction: (context) => {
+    if (context.filePath) {
+      context.hooks.onOpenFile(context.filePath, context.lineNumber);
+    }
+  }
+};
+```
+
+### Action with Feedback
+
+```tsx
+const saveAction: ContextMenuAction = {
+  id: 'save-snippet',
+  label: 'Save Snippet',
+  onAction: async (context) => {
+    await context.performWithFeedback(async () => {
+      const content = await getElementContent(context.element);
+      const success = await saveToDatabase(content);
+      return success; // true = success flash, false = error
+    });
+    
+    context.cleanup();
+  }
+};
+```
+
+### Action with AI Agent
+
+```tsx
+import { myAgent } from './agent';
+
+const refactorAction: ContextMenuAction = {
+  id: 'refactor',
+  label: 'Refactor with AI',
+  agent: {
+    provider: myAgent,
+    onComplete: (session, elements) => {
+      console.log('Refactoring complete!');
+    }
+  },
+  onAction: (context) => {
+    // Automatically enters prompt mode with the configured agent
+    context.enterPromptMode?.();
+  }
+};
+```
+
+### Toolbar Action
+
+```tsx
+import { ToolbarMenuAction } from 'react-grab';
+
+let debugMode = false;
+
+const toggleDebugAction: ToolbarMenuAction = {
+  id: 'toggle-debug',
+  label: 'Debug Mode',
+  target: 'toolbar',
+  shortcut: '⌘D',
+  isActive: () => debugMode,
+  onAction: () => {
+    debugMode = !debugMode;
+    console.log('Debug mode:', debugMode ? 'ON' : 'OFF');
+  }
+};
+```
+
+### Action with Copy Helper
+
+```tsx
+const customCopyAction: ContextMenuAction = {
+  id: 'copy-with-metadata',
+  label: 'Copy with Metadata',
+  onAction: async (context) => {
+    // First use default copy
+    context.copy?.();
+    
+    // Then add metadata to clipboard
+    const metadata = {
+      component: context.componentName,
+      file: context.filePath,
+      line: context.lineNumber,
+      count: context.elements.length
+    };
+    
+    await navigator.clipboard.writeText(
+      JSON.stringify(metadata, null, 2)
+    );
+  }
+};
+```
+
+### Action with Transform Hook
+
+```tsx
+const exportHtmlAction: ContextMenuAction = {
+  id: 'export-html',
+  label: 'Export HTML',
+  onAction: async (context) => {
+    await context.performWithFeedback(async () => {
+      const html = context.element.outerHTML;
+      
+      // Transform through plugin hooks
+      const transformed = await context.hooks.transformHtmlContent(
+        html,
+        context.elements
+      );
+      
+      // Save to file
+      const success = await downloadFile(
+        'export.html',
+        transformed
+      );
+      
+      return success;
+    });
+  }
+};
+```
+
+### Registering Actions via Plugin
+
+```tsx
+import { Plugin } from 'react-grab';
+
+const myPlugin: Plugin = {
+  name: 'my-plugin',
+  actions: [
+    logAction,
+    openFileAction,
+    saveAction,
+    toggleDebugAction
+  ]
+};
+
+// Register plugin to add actions
+reactGrab.registerPlugin(myPlugin);
+```
+
+## Type Definitions
+
+```typescript
+export interface ContextMenuAction {
+  id: string;
+  label: string;
+  target?: 'context-menu';
+  shortcut?: string;
+  enabled?: boolean | ((context: ActionContext) => boolean);
+  onAction: (context: ContextMenuActionContext) => void | Promise<void>;
+  agent?: AgentOptions;
+}
+
+export interface ToolbarMenuAction {
+  id: string;
+  label: string;
+  shortcut?: string;
+  target: 'toolbar';
+  enabled?: boolean | (() => boolean);
+  isActive?: () => boolean;
+  onAction: () => void | Promise<void>;
+}
+
+export interface ActionContext {
+  element: Element;
+  elements: Element[];
+  filePath?: string;
+  lineNumber?: number;
+  componentName?: string;
+  tagName?: string;
+  enterPromptMode?: (agent?: AgentOptions) => void;
+  hooks: ActionContextHooks;
+  performWithFeedback: (action: () => Promise<boolean>) => Promise<void>;
+  hideContextMenu: () => void;
+  cleanup: () => void;
+}
+
+export interface ContextMenuActionContext extends ActionContext {
+  copy?: () => void;
+}
+
+export interface ActionContextHooks {
+  transformHtmlContent: (html: string, elements: Element[]) => Promise<string>;
+  onOpenFile: (filePath: string, lineNumber?: number) => boolean | void;
+  transformOpenFileUrl: (url: string, filePath: string, lineNumber?: number) => string;
+}
+```
+
+## See Also
+
+- [Plugin](/api/types/plugin) - Register actions via plugins
+- [Agent](/api/types/agent) - Configure AI agents for actions

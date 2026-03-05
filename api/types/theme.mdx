@@ -1,0 +1,183 @@
+---
+title: 'Theme'
+description: 'Theme configuration interface for customizing React Grab appearance'
+---
+
+## Theme
+
+The `Theme` interface controls the appearance and visibility of all React Grab UI components. Each visual element can be individually toggled and customized.
+
+### Properties
+
+<ParamField path="enabled" type="boolean" default="true">
+  Globally toggle the entire overlay. When disabled, all React Grab UI elements are hidden.
+</ParamField>
+
+<ParamField path="hue" type="number" default="0">
+  Base hue (0-360) used to generate colors throughout the interface using HSL color space. This creates a cohesive color scheme across all UI elements.
+</ParamField>
+
+<ParamField path="selectionBox" type="object">
+  The highlight box that appears when hovering over an element before selecting it.
+  
+  <Expandable title="properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the selection highlight.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="dragBox" type="object">
+  The rectangular selection area that appears when clicking and dragging to select multiple elements.
+  
+  <Expandable title="properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the drag selection box.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="grabbedBoxes" type="object">
+  Brief flash/highlight boxes that appear on elements immediately after they're successfully grabbed/copied.
+  
+  <Expandable title="properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show these success flash effects.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="elementLabel" type="object">
+  The floating label that follows the cursor showing information about the currently hovered element.
+  
+  <Expandable title="properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the label.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="crosshair" type="object">
+  The crosshair cursor overlay that helps with precise element targeting.
+  
+  <Expandable title="properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the crosshair.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="toolbar" type="object">
+  The floating toolbar that allows toggling React Grab activation.
+  
+  <Expandable title="properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the toolbar.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Usage
+
+### Basic Theme Configuration
+
+```tsx
+import { useReactGrab } from 'react-grab';
+
+function App() {
+  const reactGrab = useReactGrab({
+    theme: {
+      hue: 200, // Blue theme
+      crosshair: {
+        enabled: false // Hide crosshair
+      }
+    }
+  });
+
+  return <div>{/* Your app */}</div>;
+}
+```
+
+### Plugin Theme Customization
+
+```tsx
+import { Plugin } from 'react-grab';
+
+const myPlugin: Plugin = {
+  name: 'my-plugin',
+  theme: {
+    hue: 120, // Green theme
+    toolbar: {
+      enabled: false // Hide toolbar
+    },
+    grabbedBoxes: {
+      enabled: true // Show success flash
+    }
+  }
+};
+```
+
+### Dynamic Theme Updates
+
+```tsx
+function ThemeSwitcher() {
+  const reactGrab = useReactGrab();
+  
+  const setDarkTheme = () => {
+    reactGrab.setOptions({
+      theme: {
+        hue: 220,
+        enabled: true
+      }
+    });
+  };
+  
+  const setLightTheme = () => {
+    reactGrab.setOptions({
+      theme: {
+        hue: 180,
+        enabled: true
+      }
+    });
+  };
+  
+  return (
+    <div>
+      <button onClick={setDarkTheme}>Dark</button>
+      <button onClick={setLightTheme}>Light</button>
+    </div>
+  );
+}
+```
+
+## Type Definition
+
+```typescript
+export interface Theme {
+  enabled?: boolean;
+  hue?: number;
+  selectionBox?: {
+    enabled?: boolean;
+  };
+  dragBox?: {
+    enabled?: boolean;
+  };
+  grabbedBoxes?: {
+    enabled?: boolean;
+  };
+  elementLabel?: {
+    enabled?: boolean;
+  };
+  crosshair?: {
+    enabled?: boolean;
+  };
+  toolbar?: {
+    enabled?: boolean;
+  };
+}
+```
+
+## See Also
+
+- [Plugin Configuration](/api/types/plugin) - Use plugins to apply theme customizations
+- [Options](/api/options) - Main configuration options including theme

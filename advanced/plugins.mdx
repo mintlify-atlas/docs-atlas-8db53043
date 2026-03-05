@@ -1,0 +1,407 @@
+---
+title: Plugin System
+description: Extend React Grab with custom plugins to add actions, hooks, and themes
+---
+
+## Overview
+
+React Grab's plugin system allows you to extend functionality with custom context menu actions, toolbar items, lifecycle hooks, and theme overrides. Plugins provide a powerful way to integrate React Grab into your development workflow.
+
+## Plugin Interface
+
+A plugin is an object that implements the `Plugin` interface:
+
+<ParamField path="name" type="string" required>
+  Unique identifier for the plugin
+</ParamField>
+
+<ParamField path="theme" type="DeepPartial<Theme>">
+  Partial theme overrides to customize the visual appearance
+</ParamField>
+
+<ParamField path="options" type="SettableOptions">
+  Override default options like `activationMode`, `keyHoldDuration`, `maxContextLines`, etc.
+</ParamField>
+
+<ParamField path="actions" type="PluginAction[]">
+  Array of context menu actions and/or toolbar menu items
+</ParamField>
+
+<ParamField path="hooks" type="PluginHooks">
+  Lifecycle callbacks for events like activation, element selection, copying, etc.
+</ParamField>
+
+<ParamField path="setup" type="(api: ReactGrabAPI, hooks: ActionContextHooks) => PluginConfig | void">
+  Setup function called when plugin is registered. Receives the full `ReactGrabAPI` and can return additional configuration or a `cleanup` function.
+  
+  <Expandable title="Parameters">
+    <ParamField path="api" type="ReactGrabAPI">
+      The React Grab API instance with methods like `activate()`, `deactivate()`, `copyElement()`, `getSource()`, etc.
+    </ParamField>
+    
+    <ParamField path="hooks" type="ActionContextHooks">
+      Action context hooks for transforming content and handling file operations
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Registering a Plugin
+
+### Simple Registration
+
+Register a plugin directly on the global API:
+
+```js
+window.__REACT_GRAB__.registerPlugin({
+  name: "my-plugin",
+  hooks: {
+    onElementSelect: (element) => {
+      console.log("Selected:", element.tagName);
+    },
+  },
+});
+```
+
+### React Component Registration
+
+Register inside a `useEffect` to ensure React Grab is loaded:
+
+```jsx
+import { useEffect } from "react";
+
+export function MyPlugin() {
+  useEffect(() => {
+    const api = window.__REACT_GRAB__;
+    if (!api) return;
+
+    api.registerPlugin({
+      name: "my-plugin",
+      actions: [
+        {
+          id: "my-action",
+          label: "My Action",
+          shortcut: "M",
+          onAction: (context) => {
+            console.log("Action on:", context.element);
+            context.hideContextMenu();
+          },
+        },
+      ],
+    });
+
+    return () => api.unregisterPlugin("my-plugin");
+  }, []);
+
+  return null;
+}
+```
+
+## Built-in Plugin Examples
+
+### Comment Plugin
+
+The comment plugin adds context menu and toolbar actions for entering prompt mode:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+export const commentPlugin: Plugin = {
+  name: "comment",
+  setup: (api) => ({
+    actions: [
+      {
+        id: "comment",
+        label: "Comment",
+        shortcut: "Enter",
+        onAction: (context) => {
+          context.enterPromptMode?.();
+        },
+      },
+      {
+        id: "comment-toolbar",
+        label: "Comment",
+        shortcut: "Enter",
+        target: "toolbar",
+        onAction: () => {
+          api.comment();
+        },
+      },
+    ],
+  }),
+};
+```
+
+### Open Plugin
+
+The open plugin allows opening source files in your editor:
+
+```typescript
+import type { Plugin } from "react-grab";
+import { openFile } from "./utils/open-file";
+
+export const openPlugin: Plugin = {
+  name: "open",
+  actions: [
+    {
+      id: "open",
+      label: "Open",
+      shortcut: "O",
+      enabled: (context) => Boolean(context.filePath),
+      onAction: (context) => {
+        if (!context.filePath) return;
+
+        const wasHandled = context.hooks.onOpenFile(
+          context.filePath,
+          context.lineNumber,
+        );
+
+        if (!wasHandled) {
+          openFile(
+            context.filePath,
+            context.lineNumber,
+            context.hooks.transformOpenFileUrl,
+          );
+        }
+
+        context.hideContextMenu();
+        context.cleanup();
+      },
+    },
+  ],
+};
+```
+
+### Copy HTML Plugin
+
+A more complex plugin that uses both hooks and actions:
+
+```typescript
+import type { Plugin } from "react-grab";
+import { appendStackContext } from "./utils/append-stack-context";
+import { copyContent } from "./utils/copy-content";
+
+export const copyHtmlPlugin: Plugin = {
+  name: "copy-html",
+  setup: (api, hooks) => {
+    let isPendingSelection = false;
+
+    return {
+      hooks: {
+        onElementSelect: (element) => {
+          if (!isPendingSelection) return;
+          isPendingSelection = false;
+          
+          void Promise.all([
+            hooks.transformHtmlContent(element.outerHTML, [element]),
+            api.getStackContext(element),
+          ])
+            .then(([transformedHtml, stackContext]) => {
+              if (!transformedHtml) return;
+              copyContent(appendStackContext(transformedHtml, stackContext));
+            })
+            .catch(() => {});
+          
+          return true;
+        },
+        onDeactivate: () => {
+          isPendingSelection = false;
+        },
+        cancelPendingToolbarActions: () => {
+          isPendingSelection = false;
+        },
+      },
+      actions: [
+        {
+          id: "copy-html",
+          label: "Copy HTML",
+          onAction: async (context) => {
+            await context.performWithFeedback(async () => {
+              const combinedHtml = context.elements
+                .map((element) => element.outerHTML)
+                .join("\n\n");
+
+              const transformedHtml = await context.hooks.transformHtmlContent(
+                combinedHtml,
+                context.elements,
+              );
+
+              if (!transformedHtml) return false;
+
+              const stackContext = await api.getStackContext(context.element);
+              return copyContent(
+                appendStackContext(transformedHtml, stackContext),
+                {
+                  componentName: context.componentName,
+                  tagName: context.tagName,
+                },
+              );
+            });
+          },
+        },
+        {
+          id: "copy-html-toolbar",
+          label: "Copy HTML",
+          target: "toolbar",
+          onAction: () => {
+            isPendingSelection = true;
+            api.activate();
+          },
+        },
+      ],
+    };
+  },
+};
+```
+
+## Plugin Hooks
+
+Plugins can listen to various lifecycle events:
+
+<ParamField path="onActivate" type="() => void">
+  Called when React Grab is activated
+</ParamField>
+
+<ParamField path="onDeactivate" type="() => void">
+  Called when React Grab is deactivated
+</ParamField>
+
+<ParamField path="onElementHover" type="(element: Element) => void">
+  Called when hovering over an element
+</ParamField>
+
+<ParamField path="onElementSelect" type="(element: Element) => boolean | void | Promise<boolean>">
+  Called when an element is selected. Return `true` to prevent default selection behavior.
+</ParamField>
+
+<ParamField path="onBeforeCopy" type="(elements: Element[]) => void | Promise<void>">
+  Called before copying elements to clipboard
+</ParamField>
+
+<ParamField path="transformCopyContent" type="(content: string, elements: Element[]) => string | Promise<string>">
+  Transform the content before it's copied to clipboard
+</ParamField>
+
+<ParamField path="onAfterCopy" type="(elements: Element[], success: boolean) => void">
+  Called after copy operation completes
+</ParamField>
+
+<ParamField path="onCopySuccess" type="(elements: Element[], content: string) => void">
+  Called when copy succeeds
+</ParamField>
+
+<ParamField path="onCopyError" type="(error: Error) => void">
+  Called when copy fails
+</ParamField>
+
+<ParamField path="transformHtmlContent" type="(html: string, elements: Element[]) => string | Promise<string>">
+  Transform HTML content before copying
+</ParamField>
+
+<ParamField path="transformAgentContext" type="(context: AgentContext, elements: Element[]) => AgentContext | Promise<AgentContext>">
+  Transform the context passed to AI agents
+</ParamField>
+
+<ParamField path="onOpenFile" type="(filePath: string, lineNumber?: number) => boolean | void">
+  Handle file opening. Return `true` to prevent default behavior.
+</ParamField>
+
+<ParamField path="transformOpenFileUrl" type="(url: string, filePath: string, lineNumber?: number) => string">
+  Transform the URL used to open files in editor
+</ParamField>
+
+## PluginConfig
+
+The `setup` function can return a `PluginConfig` object:
+
+<ParamField path="theme" type="DeepPartial<Theme>">
+  Theme overrides
+</ParamField>
+
+<ParamField path="options" type="SettableOptions">
+  Option overrides
+</ParamField>
+
+<ParamField path="actions" type="PluginAction[]">
+  Actions to register
+</ParamField>
+
+<ParamField path="hooks" type="PluginHooks">
+  Lifecycle hooks
+</ParamField>
+
+<ParamField path="cleanup" type="() => void">
+  Cleanup function called when the plugin is unregistered
+</ParamField>
+
+## Complete Example
+
+Here's a complete plugin that adds a custom analytics tracker:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+const analyticsPlugin: Plugin = {
+  name: "analytics",
+  setup: (api) => {
+    const trackEvent = (event: string, data: Record<string, any>) => {
+      console.log("Analytics:", event, data);
+      // Send to your analytics service
+    };
+
+    return {
+      hooks: {
+        onActivate: () => {
+          trackEvent("grab_activated", {});
+        },
+        onElementSelect: (element) => {
+          trackEvent("element_selected", {
+            tagName: element.tagName,
+          });
+        },
+        onCopySuccess: (elements, content) => {
+          trackEvent("copy_success", {
+            elementCount: elements.length,
+            contentLength: content.length,
+          });
+        },
+      },
+      actions: [
+        {
+          id: "track-element",
+          label: "Track Element",
+          shortcut: "T",
+          onAction: (context) => {
+            trackEvent("custom_track", {
+              tagName: context.tagName,
+              componentName: context.componentName,
+              filePath: context.filePath,
+            });
+            context.hideContextMenu();
+          },
+        },
+      ],
+      cleanup: () => {
+        trackEvent("plugin_unregistered", {});
+      },
+    };
+  },
+};
+
+// Register the plugin
+window.__REACT_GRAB__.registerPlugin(analyticsPlugin);
+```
+
+## Best Practices
+
+1. **Unique Names**: Always use unique plugin names to avoid conflicts
+2. **Cleanup**: Return a cleanup function from `setup()` to clean up resources
+3. **Type Safety**: Use TypeScript interfaces for better development experience
+4. **Error Handling**: Handle errors gracefully in async operations
+5. **Performance**: Avoid heavy operations in frequently called hooks like `onElementHover`
+6. **Unregister**: Always unregister plugins when components unmount in React
+
+## See Also
+
+- [Custom Actions](/advanced/custom-actions) - Creating context menu and toolbar actions
+- [Theming](/advanced/theming) - Customizing the visual appearance
+- [Agent Providers](/advanced/agent-providers) - Building custom AI agent integrations

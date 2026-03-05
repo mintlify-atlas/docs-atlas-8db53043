@@ -1,0 +1,429 @@
+---
+title: 'Agent Types'
+description: 'AgentProvider, AgentContext, and AgentSession interfaces for AI integration'
+---
+
+## AgentProvider
+
+Interface for implementing custom AI agent providers. Agent providers handle sending prompts to AI services and streaming responses.
+
+### Properties
+
+<ParamField path="send" type="(context: AgentContext<T>, signal: AbortSignal) => AsyncIterable<string>" required>
+  Send a prompt to the agent and receive streaming response. Must return an async iterable that yields status message strings.
+  
+  - `context` - The agent context with content, prompt, and options
+  - `signal` - AbortSignal for cancellation support
+</ParamField>
+
+<ParamField path="resume" type="(sessionId: string, signal: AbortSignal, storage: AgentSessionStorage) => AsyncIterable<string>">
+  Resume a previously started session. Only required if `supportsResume` is true.
+  
+  - `sessionId` - ID of the session to resume
+  - `signal` - AbortSignal for cancellation
+  - `storage` - Storage interface for retrieving session data
+</ParamField>
+
+<ParamField path="abort" type="(sessionId: string) => Promise<void>">
+  Abort a running session. Called when user cancels an active agent operation.
+</ParamField>
+
+<ParamField path="supportsResume" type="boolean" default="false">
+  Whether this provider supports resuming sessions after page reload.
+</ParamField>
+
+<ParamField path="supportsFollowUp" type="boolean" default="false">
+  Whether this provider supports follow-up prompts in the same session.
+</ParamField>
+
+<ParamField path="dismissButtonText" type="string">
+  Custom text for the dismiss button in the agent UI. Defaults to "Dismiss".
+</ParamField>
+
+<ParamField path="checkConnection" type="() => Promise<boolean>">
+  Check if the agent service is available. Called before showing agent UI.
+</ParamField>
+
+<ParamField path="getCompletionMessage" type="() => string | undefined">
+  Get a custom completion message to show when agent finishes successfully.
+</ParamField>
+
+<ParamField path="undo" type="() => Promise<void>">
+  Undo the last agent action. Only required if `canUndo` returns true.
+</ParamField>
+
+<ParamField path="canUndo" type="() => boolean">
+  Whether undo is currently available. Checked to show/hide undo button.
+</ParamField>
+
+<ParamField path="redo" type="() => Promise<void>">
+  Redo a previously undone action. Only required if `canRedo` returns true.
+</ParamField>
+
+<ParamField path="canRedo" type="() => boolean">
+  Whether redo is currently available. Checked to show/hide redo button.
+</ParamField>
+
+## AgentContext
+
+Context object passed to agent providers containing the prompt and selected content.
+
+### Properties
+
+<ParamField path="content" type="string[]" required>
+  Array of content strings from selected elements. Each string represents the code/content of one grabbed element.
+</ParamField>
+
+<ParamField path="prompt" type="string" required>
+  The user's prompt/instruction for the agent.
+</ParamField>
+
+<ParamField path="options" type="T">
+  Custom options for the agent provider. Type parameter T allows providers to specify their own options interface.
+</ParamField>
+
+<ParamField path="sessionId" type="string">
+  Unique session identifier. Useful for tracking and resuming sessions.
+</ParamField>
+
+## AgentSession
+
+Represents an active or completed agent session with its state and metadata.
+
+### Properties
+
+<ParamField path="id" type="string" required>
+  Unique session identifier.
+</ParamField>
+
+<ParamField path="context" type="AgentContext" required>
+  The agent context (content, prompt, options) for this session.
+</ParamField>
+
+<ParamField path="lastStatus" type="string" required>
+  The most recent status message from the agent.
+</ParamField>
+
+<ParamField path="isStreaming" type="boolean" required>
+  Whether the agent is currently streaming responses.
+</ParamField>
+
+<ParamField path="isFading" type="boolean">
+  Whether the session UI is fading out (dismissing).
+</ParamField>
+
+<ParamField path="createdAt" type="number" required>
+  Timestamp (ms) when the session was created.
+</ParamField>
+
+<ParamField path="lastUpdatedAt" type="number" required>
+  Timestamp (ms) of the last update to this session.
+</ParamField>
+
+<ParamField path="position" type="{ x: number; y: number }" required>
+  Screen position where the agent UI should appear.
+</ParamField>
+
+<ParamField path="selectionBounds" type="OverlayBounds[]" required>
+  Visual bounds of selected elements for highlighting.
+</ParamField>
+
+<ParamField path="tagName" type="string">
+  HTML tag name of the primary selected element.
+</ParamField>
+
+<ParamField path="componentName" type="string">
+  React component name of the primary selected element.
+</ParamField>
+
+<ParamField path="error" type="string">
+  Error message if the session failed.
+</ParamField>
+
+## AgentSessionStorage
+
+Storage interface for persisting agent session data. Used for session resumption.
+
+### Properties
+
+<ParamField path="getItem" type="(key: string) => string | null" required>
+  Retrieve a stored value by key. Returns null if not found.
+</ParamField>
+
+<ParamField path="setItem" type="(key: string, value: string) => void" required>
+  Store a value with the given key. Overwrites existing value.
+</ParamField>
+
+<ParamField path="removeItem" type="(key: string) => void" required>
+  Remove a stored value by key.
+</ParamField>
+
+## AgentOptions
+
+Configuration options for agent integration.
+
+### Properties
+
+<ParamField path="provider" type="AgentProvider<T>">
+  The agent provider instance to use for this operation.
+</ParamField>
+
+<ParamField path="storage" type="AgentSessionStorage | null">
+  Storage implementation for session persistence. Pass null to disable.
+</ParamField>
+
+<ParamField path="getOptions" type="() => T">
+  Function that returns custom options to pass to the provider.
+</ParamField>
+
+<ParamField path="onStart" type="(session: AgentSession, elements: Element[]) => void">
+  Called when an agent session starts.
+</ParamField>
+
+<ParamField path="onStatus" type="(status: string, session: AgentSession) => void">
+  Called when agent sends a status update.
+</ParamField>
+
+<ParamField path="onComplete" type="(session: AgentSession, elements: Element[]) => AgentCompleteResult | void | Promise<AgentCompleteResult | void>">
+  Called when agent completes successfully. Can return an error to show.
+</ParamField>
+
+<ParamField path="onError" type="(error: Error, session: AgentSession) => void">
+  Called when agent encounters an error.
+</ParamField>
+
+<ParamField path="onResume" type="(session: AgentSession) => void">
+  Called when a session is resumed.
+</ParamField>
+
+<ParamField path="onAbort" type="(session: AgentSession, elements: Element[]) => void">
+  Called when user aborts a session.
+</ParamField>
+
+<ParamField path="onUndo" type="(session: AgentSession, elements: Element[]) => void">
+  Called when user triggers undo.
+</ParamField>
+
+<ParamField path="onDismiss" type="(session: AgentSession, elements: Element[]) => void">
+  Called when user dismisses the session UI.
+</ParamField>
+
+## Usage
+
+### Basic Agent Provider
+
+```tsx
+import { AgentProvider, AgentContext } from 'react-grab';
+
+const myAgent: AgentProvider = {
+  async *send(context, signal) {
+    yield 'Connecting to AI service...';
+    
+    const response = await fetch('/api/agent', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: context.prompt,
+        content: context.content
+      }),
+      signal
+    });
+    
+    yield 'Processing request...';
+    
+    const result = await response.json();
+    
+    yield 'Applying changes...';
+    
+    // Apply the changes
+    await applyChanges(result);
+    
+    yield 'Complete!';
+  },
+  
+  checkConnection: async () => {
+    try {
+      await fetch('/api/health');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
+```
+
+### Agent with Custom Options
+
+```tsx
+interface MyAgentOptions {
+  model: string;
+  temperature: number;
+}
+
+const configurableAgent: AgentProvider<MyAgentOptions> = {
+  async *send(context, signal) {
+    const { model, temperature } = context.options || {};
+    
+    yield `Using model: ${model}...`;
+    
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        model,
+        temperature,
+        prompt: context.prompt,
+        content: context.content
+      }),
+      signal
+    });
+    
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    while (reader) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      yield decoder.decode(value);
+    }
+  },
+  
+  supportsFollowUp: true,
+  dismissButtonText: 'Done'
+};
+```
+
+### Using Agent in Action
+
+```tsx
+import { ContextMenuAction } from 'react-grab';
+
+const refactorAction: ContextMenuAction = {
+  id: 'refactor',
+  label: 'Refactor with AI',
+  onAction: async (context) => {
+    context.enterPromptMode?.({
+      provider: myAgent,
+      getOptions: () => ({
+        model: 'gpt-4',
+        temperature: 0.7
+      }),
+      onComplete: (session, elements) => {
+        console.log('Refactoring complete!');
+      },
+      onError: (error) => {
+        console.error('Failed:', error);
+      }
+    });
+  }
+};
+```
+
+### Agent with Session Storage
+
+```tsx
+const persistentAgent: AgentProvider = {
+  async *send(context, signal) {
+    // Implementation...
+    yield 'Processing...';
+  },
+  
+  async *resume(sessionId, signal, storage) {
+    const savedState = storage.getItem(`session-${sessionId}`);
+    if (!savedState) {
+      throw new Error('Session not found');
+    }
+    
+    yield 'Resuming session...';
+    
+    const state = JSON.parse(savedState);
+    // Continue from saved state
+    
+    yield 'Resumed!';
+  },
+  
+  supportsResume: true
+};
+
+// Use with storage
+const action: ContextMenuAction = {
+  id: 'ai-assist',
+  label: 'AI Assist',
+  onAction: (context) => {
+    context.enterPromptMode?.({
+      provider: persistentAgent,
+      storage: localStorage, // Use browser localStorage
+      onStart: (session) => {
+        localStorage.setItem(
+          `session-${session.id}`,
+          JSON.stringify(session.context)
+        );
+      }
+    });
+  }
+};
+```
+
+## Type Definitions
+
+```typescript
+export interface AgentProvider<T = any> {
+  send: (context: AgentContext<T>, signal: AbortSignal) => AsyncIterable<string>;
+  resume?: (sessionId: string, signal: AbortSignal, storage: AgentSessionStorage) => AsyncIterable<string>;
+  abort?: (sessionId: string) => Promise<void>;
+  supportsResume?: boolean;
+  supportsFollowUp?: boolean;
+  dismissButtonText?: string;
+  checkConnection?: () => Promise<boolean>;
+  getCompletionMessage?: () => string | undefined;
+  undo?: () => Promise<void>;
+  canUndo?: () => boolean;
+  redo?: () => Promise<void>;
+  canRedo?: () => boolean;
+}
+
+export interface AgentContext<T = unknown> {
+  content: string[];
+  prompt: string;
+  options?: T;
+  sessionId?: string;
+}
+
+export interface AgentSession {
+  id: string;
+  context: AgentContext;
+  lastStatus: string;
+  isStreaming: boolean;
+  isFading?: boolean;
+  createdAt: number;
+  lastUpdatedAt: number;
+  position: { x: number; y: number };
+  selectionBounds: OverlayBounds[];
+  tagName?: string;
+  componentName?: string;
+  error?: string;
+}
+
+export interface AgentSessionStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+export interface AgentOptions<T = any> {
+  provider?: AgentProvider<T>;
+  storage?: AgentSessionStorage | null;
+  getOptions?: () => T;
+  onStart?: (session: AgentSession, elements: Element[]) => void;
+  onStatus?: (status: string, session: AgentSession) => void;
+  onComplete?: (session: AgentSession, elements: Element[]) => AgentCompleteResult | void | Promise<AgentCompleteResult | void>;
+  onError?: (error: Error, session: AgentSession) => void;
+  onResume?: (session: AgentSession) => void;
+  onAbort?: (session: AgentSession, elements: Element[]) => void;
+  onUndo?: (session: AgentSession, elements: Element[]) => void;
+  onDismiss?: (session: AgentSession, elements: Element[]) => void;
+}
+```
+
+## See Also
+
+- [Actions](/api/types/actions) - Use actions to trigger agent operations
+- [Plugin](/api/types/plugin) - Register agents via plugins

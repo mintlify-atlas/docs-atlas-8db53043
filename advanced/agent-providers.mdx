@@ -1,0 +1,498 @@
+---
+title: Agent Providers
+description: Build custom AI agent integrations with the AgentProvider interface
+---
+
+## Overview
+
+Agent providers allow you to integrate AI assistants and coding agents into React Grab. When configured, users can enter prompt mode to send element context to your agent and receive responses through a streaming interface.
+
+## AgentProvider Interface
+
+The `AgentProvider` interface defines how React Grab communicates with your AI agent:
+
+<ParamField path="send" type="(context: AgentContext, signal: AbortSignal) => AsyncIterable<string>" required>
+  Send element context to the agent and return a stream of response chunks.
+  
+  <Expandable title="Parameters">
+    <ParamField path="context" type="AgentContext">
+      <Expandable title="Properties">
+        <ParamField path="content" type="string[]">
+          Array of content strings (HTML, source code, etc.) for selected elements
+        </ParamField>
+        
+        <ParamField path="prompt" type="string">
+          User's prompt/question
+        </ParamField>
+        
+        <ParamField path="options" type="T | undefined">
+          Custom options from `getOptions()` function
+        </ParamField>
+        
+        <ParamField path="sessionId" type="string | undefined">
+          Session ID for follow-up requests
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="signal" type="AbortSignal">
+      Abort signal to cancel the request
+    </ParamField>
+  </Expandable>
+  
+  Returns an async iterable that yields response chunks as strings.
+</ParamField>
+
+<ParamField path="resume" type="(sessionId: string, signal: AbortSignal, storage: AgentSessionStorage) => AsyncIterable<string>">
+  Resume a previous session (e.g., after page reload). Only called if `supportsResume` is `true`.
+</ParamField>
+
+<ParamField path="abort" type="(sessionId: string) => Promise<void>">
+  Abort an ongoing agent session
+</ParamField>
+
+<ParamField path="supportsResume" type="boolean">
+  Whether the provider supports resuming sessions
+</ParamField>
+
+<ParamField path="supportsFollowUp" type="boolean">
+  Whether the provider supports follow-up questions in the same session
+</ParamField>
+
+<ParamField path="dismissButtonText" type="string">
+  Custom text for the dismiss button (default: "Dismiss")
+</ParamField>
+
+<ParamField path="checkConnection" type="() => Promise<boolean>">
+  Check if the agent service is available/connected
+</ParamField>
+
+<ParamField path="getCompletionMessage" type="() => string | undefined">
+  Return a custom completion message shown when the agent finishes
+</ParamField>
+
+<ParamField path="undo" type="() => Promise<void>">
+  Undo the last agent action
+</ParamField>
+
+<ParamField path="canUndo" type="() => boolean">
+  Whether undo is currently available
+</ParamField>
+
+<ParamField path="redo" type="() => Promise<void>">
+  Redo a previously undone action
+</ParamField>
+
+<ParamField path="canRedo" type="() => boolean">
+  Whether redo is currently available
+</ParamField>
+
+## AgentContext Interface
+
+Context information passed to the agent:
+
+<ParamField path="content" type="string[]">
+  Array of content strings for each selected element. Typically includes HTML source code and component information.
+</ParamField>
+
+<ParamField path="prompt" type="string">
+  The user's prompt or question
+</ParamField>
+
+<ParamField path="options" type="T | undefined">
+  Custom options provided by the `getOptions` function
+</ParamField>
+
+<ParamField path="sessionId" type="string | undefined">
+  Session ID for tracking conversations and follow-ups
+</ParamField>
+
+## AgentOptions Interface
+
+Configuration options for agent integration:
+
+<ParamField path="provider" type="AgentProvider<T>">
+  The agent provider instance
+</ParamField>
+
+<ParamField path="storage" type="AgentSessionStorage | null">
+  Storage interface for persisting session data. Set to `null` to disable storage.
+  
+  <Expandable title="AgentSessionStorage Interface">
+    <ParamField path="getItem" type="(key: string) => string | null">
+      Retrieve a stored value
+    </ParamField>
+    
+    <ParamField path="setItem" type="(key: string, value: string) => void">
+      Store a value
+    </ParamField>
+    
+    <ParamField path="removeItem" type="(key: string) => void">
+      Remove a stored value
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="getOptions" type="() => T">
+  Function that returns custom options passed to the provider
+</ParamField>
+
+<ParamField path="onStart" type="(session: AgentSession, elements: Element[]) => void">
+  Called when an agent session starts
+</ParamField>
+
+<ParamField path="onStatus" type="(status: string, session: AgentSession) => void">
+  Called when the agent sends a status update
+</ParamField>
+
+<ParamField path="onComplete" type="(session: AgentSession, elements: Element[]) => AgentCompleteResult | void | Promise<AgentCompleteResult | void>">
+  Called when the agent completes successfully
+</ParamField>
+
+<ParamField path="onError" type="(error: Error, session: AgentSession) => void">
+  Called when an error occurs
+</ParamField>
+
+<ParamField path="onResume" type="(session: AgentSession) => void">
+  Called when resuming a session
+</ParamField>
+
+<ParamField path="onAbort" type="(session: AgentSession, elements: Element[]) => void">
+  Called when the user aborts the session
+</ParamField>
+
+<ParamField path="onUndo" type="(session: AgentSession, elements: Element[]) => void">
+  Called when the user undoes an action
+</ParamField>
+
+<ParamField path="onDismiss" type="(session: AgentSession, elements: Element[]) => void">
+  Called when the user dismisses the session
+</ParamField>
+
+## Creating a Basic Agent Provider
+
+Here's a simple agent provider that sends requests to an API:
+
+```typescript
+import type { AgentProvider, AgentContext } from "react-grab";
+
+const myAgentProvider: AgentProvider = {
+  async *send(context: AgentContext, signal: AbortSignal) {
+    const response = await fetch("https://api.example.com/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: context.content,
+        prompt: context.prompt,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      yield chunk;
+    }
+  },
+};
+```
+
+## Advanced Agent Provider with All Features
+
+A complete implementation with session management, undo/redo, and connection checking:
+
+```typescript
+import type { AgentProvider, AgentContext, AgentSessionStorage } from "react-grab";
+
+interface MyAgentOptions {
+  model: string;
+  temperature: number;
+}
+
+class MyAgentProvider implements AgentProvider<MyAgentOptions> {
+  private sessions = new Map<string, any>();
+  private history: any[] = [];
+  private historyIndex = -1;
+
+  supportsResume = true;
+  supportsFollowUp = true;
+  dismissButtonText = "Close";
+
+  async checkConnection(): Promise<boolean> {
+    try {
+      const response = await fetch("https://api.example.com/health");
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async *send(
+    context: AgentContext<MyAgentOptions>,
+    signal: AbortSignal
+  ): AsyncIterable<string> {
+    const { content, prompt, options, sessionId } = context;
+    
+    // Build request with custom options
+    const requestBody = {
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful coding assistant.",
+        },
+        {
+          role: "user",
+          content: `Here's the code:\n\n${content.join("\n\n")}\n\nQuestion: ${prompt}`,
+        },
+      ],
+      model: options?.model || "gpt-4",
+      temperature: options?.temperature || 0.7,
+      stream: true,
+    };
+
+    const response = await fetch("https://api.example.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.API_KEY}`,
+      },
+      body: JSON.stringify(requestBody),
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`);
+    }
+
+    // Store session
+    if (sessionId) {
+      this.sessions.set(sessionId, {
+        messages: requestBody.messages,
+        createdAt: Date.now(),
+      });
+    }
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+          
+          try {
+            const parsed = JSON.parse(data);
+            const chunk = parsed.choices[0]?.delta?.content;
+            if (chunk) yield chunk;
+          } catch (e) {
+            console.error("Failed to parse SSE:", e);
+          }
+        }
+      }
+    }
+  }
+
+  async *resume(
+    sessionId: string,
+    signal: AbortSignal,
+    storage: AgentSessionStorage
+  ): AsyncIterable<string> {
+    const sessionData = storage.getItem(`session_${sessionId}`);
+    if (!sessionData) {
+      throw new Error("Session not found");
+    }
+
+    const session = JSON.parse(sessionData);
+    
+    // Resume from stored state
+    yield* this.send(
+      {
+        content: session.content,
+        prompt: session.lastPrompt,
+        sessionId,
+      },
+      signal
+    );
+  }
+
+  async abort(sessionId: string): Promise<void> {
+    // Cancel ongoing request for this session
+    this.sessions.delete(sessionId);
+  }
+
+  getCompletionMessage(): string {
+    return "Analysis complete. You can ask a follow-up question.";
+  }
+
+  async undo(): Promise<void> {
+    if (this.canUndo()) {
+      this.historyIndex--;
+      // Implement undo logic
+    }
+  }
+
+  canUndo(): boolean {
+    return this.historyIndex > 0;
+  }
+
+  async redo(): Promise<void> {
+    if (this.canRedo()) {
+      this.historyIndex++;
+      // Implement redo logic
+    }
+  }
+
+  canRedo(): boolean {
+    return this.historyIndex < this.history.length - 1;
+  }
+}
+
+const provider = new MyAgentProvider();
+```
+
+## Registering an Agent Provider
+
+Register an agent provider through an action:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+const aiPlugin: Plugin = {
+  name: "ai-assistant",
+  actions: [
+    {
+      id: "ask-ai",
+      label: "Ask AI",
+      shortcut: "A",
+      onAction: (context) => {
+        context.enterPromptMode?.({
+          provider: myAgentProvider,
+          storage: localStorage, // Use localStorage for session persistence
+          getOptions: () => ({
+            model: "gpt-4",
+            temperature: 0.7,
+          }),
+          onStart: (session) => {
+            console.log("AI session started:", session.id);
+          },
+          onComplete: (session) => {
+            console.log("AI session completed:", session.id);
+          },
+          onError: (error) => {
+            console.error("AI error:", error);
+          },
+        });
+      },
+    },
+  ],
+};
+
+window.__REACT_GRAB__.registerPlugin(aiPlugin);
+```
+
+## AgentSession Interface
+
+Session information tracked during agent interactions:
+
+```typescript
+interface AgentSession {
+  id: string;
+  context: AgentContext;
+  lastStatus: string;
+  isStreaming: boolean;
+  isFading?: boolean;
+  createdAt: number;
+  lastUpdatedAt: number;
+  position: { x: number; y: number };
+  selectionBounds: OverlayBounds[];
+  tagName?: string;
+  componentName?: string;
+  error?: string;
+}
+```
+
+## Best Practices
+
+1. **Error Handling**: Always handle network errors and API failures gracefully
+2. **Abort Support**: Implement proper cancellation using the `AbortSignal`
+3. **Streaming**: Yield chunks as soon as they're available for responsive UX
+4. **Session Storage**: Use `AgentSessionStorage` to persist sessions across page reloads
+5. **Type Safety**: Use generics to type your custom options: `AgentProvider<MyOptions>`
+6. **Status Updates**: Use the `onStatus` callback to show progress to users
+7. **Connection Checks**: Implement `checkConnection` to verify service availability
+8. **Follow-ups**: Set `supportsFollowUp: true` to enable conversation continuity
+
+## Example: OpenAI Integration
+
+```typescript
+import type { AgentProvider, AgentContext } from "react-grab";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true, // Only for development!
+});
+
+const openAIProvider: AgentProvider = {
+  async *send(context: AgentContext, signal: AbortSignal) {
+    const stream = await openai.chat.completions.create(
+      {
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert at analyzing React components.",
+          },
+          {
+            role: "user",
+            content: `${context.content.join("\n\n")}\n\n${context.prompt}`,
+          },
+        ],
+        stream: true,
+      },
+      { signal }
+    );
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) yield content;
+    }
+  },
+
+  async checkConnection() {
+    try {
+      await openai.models.list();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
+```
+
+## See Also
+
+- [Custom Actions](/advanced/custom-actions) - Creating actions that trigger agents
+- [Plugins](/advanced/plugins) - Plugin system overview
+- [API Reference](/api-reference/types) - Complete TypeScript interfaces

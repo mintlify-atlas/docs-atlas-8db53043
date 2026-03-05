@@ -1,0 +1,320 @@
+---
+title: 'How It Works'
+description: 'Understanding the technical architecture behind React Grab'
+---
+
+## Overview
+
+React Grab uses a combination of React Fiber introspection, source mapping, element detection, and an interactive overlay system to let you inspect and copy React components directly from your browser.
+
+## React Fiber Debugging
+
+React Grab taps into React's internal Fiber architecture to extract component information and source locations.
+
+### Component Discovery
+
+When you hover over an element, React Grab:
+
+1. **Finds the Fiber node** using `getFiberFromHostInstance(element)` from the `bippy` library
+2. **Traverses the Fiber tree** to locate composite (component) Fibers
+3. **Extracts the component name** using `getDisplayName(fiber.type)`
+
+The system filters out internal components like Next.js internals and React primitives:
+
+```typescript
+const NEXT_INTERNAL_COMPONENT_NAMES = new Set([
+  "InnerLayoutRouter",
+  "RedirectErrorBoundary",
+  "ErrorBoundary",
+  "AppRouter",
+  // ...
+]);
+
+const REACT_INTERNAL_COMPONENT_NAMES = new Set([
+  "Suspense",
+  "Fragment",
+  "StrictMode",
+  // ...
+]);
+```
+
+### Stack Trace Extraction
+
+React Grab uses React's debug stack to determine where components are defined:
+
+```typescript
+const stack = await getOwnerStack(fiber);
+
+for (const frame of stack) {
+  const hasSourceFile = frame.fileName && isSourceFile(frame.fileName);
+  const hasComponentName = 
+    frame.functionName && checkIsSourceComponentName(frame.functionName);
+  
+  if (hasSourceFile) {
+    filePath = normalizeFileName(frame.fileName);
+    lineNumber = frame.lineNumber;
+    columnNumber = frame.columnNumber;
+    break;
+  }
+}
+```
+
+The stack contains frames with:
+- `functionName` - The component or function name
+- `fileName` - Source file path (normalized)
+- `lineNumber` and `columnNumber` - Exact source location
+
+## Source Mapping
+
+### Next.js Server Components
+
+For Next.js applications, React Grab handles server component source mapping specially:
+
+1. **Detects server component URLs** like `rsc://React/Server/webpack-internal://...`
+2. **Symbolicates frames** by posting to Next.js dev server endpoint:
+
+```typescript
+const response = await fetch("/__nextjs_original-stack-frames", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    frames: requestFrames,
+    isServer: true,
+    isEdgeServer: false,
+    isAppDirectory: true,
+  }),
+});
+
+const results = await response.json();
+// Resolves virtual URLs to real source files with line/column numbers
+```
+
+3. **Enriches frames** with original source locations from bundler source maps
+
+### Source File Detection
+
+The `isSourceFile()` function from `bippy/source` determines if a file path is user code (not `node_modules` or bundler internals):
+
+```typescript
+for (const frame of stack) {
+  if (frame.fileName && isSourceFile(frame.fileName)) {
+    return {
+      filePath: normalizeFileName(frame.fileName),
+      lineNumber: frame.lineNumber,
+      componentName: frame.functionName,
+    };
+  }
+}
+```
+
+## Element Detection
+
+React Grab continuously tracks the element under your cursor using a throttled detection system:
+
+### Detection Pipeline
+
+```typescript
+const detectElementAtPosition = (clientX: number, clientY: number) => {
+  const now = Date.now();
+  
+  // Throttle detection to 32ms intervals
+  if (now - lastElementDetectionTime < ELEMENT_DETECTION_THROTTLE_MS) {
+    return;
+  }
+  
+  lastElementDetectionTime = now;
+  const element = getElementAtPosition(clientX, clientY);
+  
+  if (isValidGrabbableElement(element)) {
+    actions.setDetectedElement(element);
+  }
+};
+```
+
+### Valid Element Criteria
+
+Elements must pass validation through `isValidGrabbableElement()`:
+
+- Not a root element (`html`, `body`, `#root`, `#__next`)
+- Not part of React Grab's own overlay UI
+- Connected to the DOM
+- Not marked with `data-react-grab-ignore` attribute
+
+### Multi-Element Selection
+
+When dragging to select multiple elements:
+
+1. **Calculate drag rectangle** from start/end coordinates
+2. **Sample points** within the rectangle using a grid pattern:
+
+```typescript
+const DRAG_SELECTION_SAMPLE_SPACING_PX = 32;
+const DRAG_SELECTION_COVERAGE_THRESHOLD = 0.75;
+
+// Sample grid points and collect elements
+const elements = getElementsInDrag(dragRect, isValidGrabbableElement);
+
+// Filter elements with sufficient coverage
+elements.filter(element => {
+  const coverage = calculateCoverage(element, dragRect);
+  return coverage >= DRAG_SELECTION_COVERAGE_THRESHOLD;
+});
+```
+
+## Overlay System
+
+The overlay provides visual feedback using a canvas-based rendering system.
+
+### Overlay Layers
+
+React Grab uses multiple overlay layers with precise z-index management:
+
+```typescript
+const Z_INDEX_HOST = 2147483647;          // Root container
+const Z_INDEX_LABEL = 2147483647;         // Element labels
+const Z_INDEX_OVERLAY_CANVAS = 2147483645; // Selection boxes
+```
+
+### Selection Box Rendering
+
+Selection boxes are drawn with:
+
+1. **Bounds calculation** from element's `getBoundingClientRect()`
+2. **Transform handling** for CSS transforms up to 6 ancestor levels
+3. **Smooth interpolation** using lerp for visual smoothness:
+
+```typescript
+const SELECTION_LERP_FACTOR = 0.95;
+
+// Smoothly animate box position
+currentX = currentX * SELECTION_LERP_FACTOR + targetX * (1 - SELECTION_LERP_FACTOR);
+currentY = currentY * SELECTION_LERP_FACTOR + targetY * (1 - SELECTION_LERP_FACTOR);
+```
+
+### Visual Components
+
+**Selection Box**: Highlights the currently hovered element
+```typescript
+const OVERLAY_BORDER_COLOR_DEFAULT = "rgba(210, 57, 192, 0.5)";
+const OVERLAY_FILL_COLOR_DEFAULT = "rgba(210, 57, 192, 0.08)";
+```
+
+**Drag Box**: Shows the rectangular selection area during drag
+```typescript
+const OVERLAY_BORDER_COLOR_DRAG = "rgba(210, 57, 192, 0.4)";
+const OVERLAY_FILL_COLOR_DRAG = "rgba(210, 57, 192, 0.05)";
+```
+
+**Grabbed Boxes**: Temporary flash effects after successful copy
+```typescript
+const showTemporaryGrabbedBox = (bounds: OverlayBounds, element: Element) => {
+  const boxId = `grabbed-${Date.now()}-${Math.random()}`;
+  actions.addGrabbedBox({ id: boxId, bounds, element });
+  
+  setTimeout(() => {
+    actions.removeGrabbedBox(boxId);
+  }, FEEDBACK_DURATION_MS); // 1500ms
+};
+```
+
+**Crosshair**: Precision cursor overlay for accurate targeting
+```typescript
+const crosshairVisible = createMemo(
+  () =>
+    theme.enabled &&
+    theme.crosshair.enabled &&
+    isRendererActive() &&
+    !isDragging() &&
+    !isTouchMode
+);
+```
+
+### Element Labels
+
+Floating labels display component information:
+
+```typescript
+interface SelectionLabelInstance {
+  id: string;
+  bounds: OverlayBounds;
+  tagName: string;
+  componentName?: string;
+  status: "idle" | "copying" | "copied" | "fading" | "error";
+  mouseX?: number;
+  mouseXOffsetRatio?: number;
+}
+```
+
+Labels automatically position above or below elements with intelligent arrow placement based on viewport constraints.
+
+## State Management
+
+React Grab uses SolidJS signals for reactive state management:
+
+```typescript
+type ReactGrabPhase = 
+  | "idle"
+  | "holding"    // Key held but not activated
+  | "active"     // Inspection mode active
+  | "dragging"   // Multi-select drag in progress
+  | "justDragged" // Drag just completed
+  | "frozen"     // Selection frozen for copy
+  | "copying"    // Copy operation in progress
+  | "justCopied"; // Copy just completed
+
+const [store, actions] = createGrabStore({
+  current: { state: "idle", phase: "idle" },
+  pointer: { x: 0, y: 0 },
+  detectedElement: null,
+  frozenElement: null,
+  frozenElements: [],
+  // ...
+});
+```
+
+### Reactive Updates
+
+Effects automatically respond to state changes:
+
+```typescript
+createEffect(on(isActivated, (activated, previousActivated) => {
+  if (activated && !previousActivated) {
+    freezePseudoStates();     // Preserve :hover, :focus states
+    freezeGlobalAnimations(); // Stop CSS animations
+    document.body.style.touchAction = "none"; // Prevent gestures
+  } else if (!activated && previousActivated) {
+    unfreezePseudoStates();
+    unfreezeGlobalAnimations();
+    document.body.style.touchAction = "";
+  }
+}));
+```
+
+## Performance Optimizations
+
+### Caching
+
+- **Stack cache**: `WeakMap<Element, Promise<StackFrame[]>>` prevents redundant Fiber traversal
+- **Bounds cache**: Element bounds cached for 16ms (`BOUNDS_CACHE_TTL_MS`)
+- **Component name debouncing**: 100ms delay before resolving component names
+
+### Throttling
+
+```typescript
+const ELEMENT_DETECTION_THROTTLE_MS = 32;  // ~30fps detection
+const DRAG_PREVIEW_DEBOUNCE_MS = 32;       // Debounce drag preview
+const COMPONENT_NAME_DEBOUNCE_MS = 100;    // Debounce name resolution
+```
+
+### Animation Freezing
+
+When activated, React Grab can freeze React updates to prevent UI changes:
+
+```typescript
+if (options.freezeReactUpdates) {
+  const unfreezeUpdates = freezeUpdates();
+  onCleanup(unfreezeUpdates);
+}
+```
+
+This uses React DevTools internals to pause component updates during inspection.

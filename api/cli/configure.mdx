@@ -1,0 +1,383 @@
+---
+title: grab configure
+description: Configure React Grab options including activation keys, behavior modes, and context settings
+---
+
+## Overview
+
+The `grab configure` command allows you to customize React Grab's behavior including activation keys, activation modes, and context options.
+
+## Usage
+
+```bash
+grab configure
+```
+
+Alias: `grab config`
+
+## Options
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--yes` | `-y` | Skip confirmation prompts |
+| `--key <key>` | `-k` | Activation key (e.g., Meta+K, Ctrl+Shift+G, Space) |
+| `--mode <mode>` | `-m` | Activation mode: `toggle` or `hold` |
+| `--hold-duration <ms>` | - | Key hold duration in milliseconds (for hold mode) |
+| `--allow-input <boolean>` | - | Allow activation inside input fields (`true`/`false`) |
+| `--context-lines <lines>` | - | Max context lines to include |
+| `--cdn <domain>` | - | CDN domain (e.g., unpkg.com, custom.react-grab.com) |
+| `--cwd <cwd>` | `-c` | Working directory (defaults to current directory) |
+
+## Configuration Options
+
+### Activation Key
+
+The keyboard shortcut to activate React Grab:
+
+<CodeGroup>
+
+```bash Meta+K (Cmd+K on Mac, Win+K on Windows)
+grab configure --key "Meta+K"
+```
+
+```bash Ctrl+Shift+G
+grab configure --key "Ctrl+Shift+G"
+```
+
+```bash Space
+grab configure --key "Space"
+```
+
+```bash Single key
+grab configure --key "g"
+```
+
+</CodeGroup>
+
+**Supported modifiers:**
+- `Meta` (Cmd on Mac, Win on Windows)
+- `Ctrl`
+- `Shift`
+- `Alt` (Option on Mac)
+
+**Supported keys:**
+- Letters: `a-z`
+- Numbers: `0-9`
+- Special keys: `Space`, `Enter`, `Escape`, `Tab`
+- Function keys: `F1-F12`
+- Symbols: `` ` ``, `-`, `=`, `[`, `]`, `\`, `;`, `'`, `,`, `.`, `/`
+
+### Activation Mode
+
+How the activation key behaves:
+
+<CodeGroup>
+
+```bash Toggle
+grab configure --mode toggle
+```
+
+```bash Hold
+grab configure --mode hold
+```
+
+</CodeGroup>
+
+- **Toggle** — Press once to activate, press again to deactivate
+- **Hold** — Hold the key to keep React Grab active, release to deactivate
+
+### Key Hold Duration
+
+Milliseconds to hold the key before activation (only for hold mode):
+
+```bash
+grab configure --hold-duration 200
+```
+
+**Range:** 0-2000ms  
+**Default:** 150ms
+
+### Allow Activation Inside Input
+
+Whether to allow activation when focused on input fields:
+
+<CodeGroup>
+
+```bash Enable
+grab configure --allow-input true
+```
+
+```bash Disable
+grab configure --allow-input false
+```
+
+</CodeGroup>
+
+### Max Context Lines
+
+Number of surrounding code lines to include in copied context:
+
+```bash
+grab configure --context-lines 5
+```
+
+**Range:** 0-50  
+**Default:** 3
+
+### CDN Domain
+
+Customize the CDN domain for loading React Grab:
+
+```bash
+grab configure --cdn custom.react-grab.com
+```
+
+## Examples
+
+### Interactive Mode
+
+Run without flags to use the interactive configuration wizard:
+
+```bash
+grab configure
+```
+
+<Steps>
+  <Step title="Select option to configure">
+    Search and select from available options:
+
+    ```
+    ? Search for an option to configure:
+    ❯ Activation Key
+      Activation Mode
+      Key Hold Duration
+      Allow Activation Inside Input
+      Max Context Lines
+    ```
+  </Step>
+
+  <Step title="Configure the option">
+    Follow prompts based on the selected option:
+
+    ```
+    ? Type key combination (e.g. ctrl+shift+g):
+    ❯ Ctrl+G
+      Meta+K
+      Space
+      g
+    ```
+  </Step>
+
+  <Step title="Review changes">
+    Preview the code changes:
+
+    ```diff
+    --- app/layout.tsx
+    +++ app/layout.tsx
+    @@ -10,6 +10,7 @@
+           <Script
+             src="//unpkg.com/react-grab/dist/index.global.js"
+    +        data-options='{"activationKey":"Meta+K"}'
+             crossOrigin="anonymous"
+           />
+         )}
+    ```
+  </Step>
+
+  <Step title="Apply changes">
+    Confirm to save the configuration:
+
+    ```
+    ? Apply these changes? (Y/n)
+    ```
+  </Step>
+</Steps>
+
+### Configure Multiple Options
+
+Set multiple options at once:
+
+```bash
+grab configure \
+  --key "Meta+K" \
+  --mode toggle \
+  --context-lines 5 \
+  --allow-input true
+```
+
+### Non-Interactive Configuration
+
+Configure without prompts:
+
+```bash
+grab configure --key "g" --yes
+```
+
+### Change CDN Domain
+
+Use a custom CDN:
+
+```bash
+grab configure --cdn custom.react-grab.com
+```
+
+## Output Example
+
+```bash
+$ grab configure --key "Meta+K"
+✿ React Grab 0.0.1
+
+✔ Preflight checks.
+
+Configure React Grab options:
+
+  Activation key: ⌘ + K
+
+--- app/layout.tsx
++++ app/layout.tsx
+@@ -10,6 +10,7 @@
+       <Script
+         src="//unpkg.com/react-grab/dist/index.global.js"
++        data-options='{"activationKey":"Meta+K"}'
+         crossOrigin="anonymous"
+       />
+     )}
+
+? Apply these changes? (Y/n)
+
+✔ Applying changes to app/layout.tsx.
+
+Success! React Grab options have been configured.
+```
+
+## Advanced Configuration
+
+### Combined Options Example
+
+```bash
+grab configure \
+  --key "Ctrl+Shift+G" \
+  --mode hold \
+  --hold-duration 200 \
+  --allow-input false \
+  --context-lines 5
+```
+
+Results in:
+
+```jsx
+<Script
+  src="//unpkg.com/react-grab/dist/index.global.js"
+  data-options='{
+    "activationKey": "Ctrl+Shift+G",
+    "activationMode": "hold",
+    "keyHoldDuration": 200,
+    "allowActivationInsideInput": false,
+    "maxContextLines": 5
+  }'
+  crossOrigin="anonymous"
+/>
+```
+
+### Interactive Key Selection
+
+The interactive mode provides smart suggestions:
+
+```
+? Type key combination (e.g. ctrl+shift+g):
+❯ Ctrl+G
+  Ctrl+K
+  Ctrl+E
+  Meta+G
+  Meta+K
+  Space
+  g
+  k
+```
+
+Type to filter suggestions:
+
+```
+? Type key combination (e.g. ctrl+shift+g): ctrl+shift
+❯ Ctrl+Shift+G
+  Ctrl+Shift+K
+  Ctrl+Shift+E
+  Ctrl+Shift+Space
+```
+
+## Troubleshooting
+
+### React Grab Not Installed
+
+```
+✖ Preflight checks.
+
+✗ React Grab is not installed.
+Run react-grab init first to install React Grab.
+```
+
+Solution: Run [`grab init`](/api/cli/init) first.
+
+### Invalid Mode
+
+```
+✗ Invalid mode: invalid. Use "toggle" or "hold".
+```
+
+Solution: Use `toggle` or `hold` for the `--mode` flag.
+
+### Invalid Hold Duration
+
+```
+✗ Invalid hold duration. Must be 0-2000ms.
+```
+
+Solution: Provide a value between 0 and 2000.
+
+### Invalid Context Lines
+
+```
+✗ Invalid context lines. Must be 0-50.
+```
+
+Solution: Provide a value between 0 and 50.
+
+### No Changes Needed
+
+If the configuration is already set:
+
+```
+✔ Preflight checks.
+
+No changes needed.
+```
+
+## Configuration Persistence
+
+Configurations are stored in your code via the `data-options` attribute:
+
+```jsx
+<Script
+  src="//unpkg.com/react-grab/dist/index.global.js"
+  data-options='{"activationKey":"Meta+K","maxContextLines":5}'
+  crossOrigin="anonymous"
+/>
+```
+
+For programmatic usage, pass options to the init function or React component:
+
+```tsx
+import { ReactGrab } from "react-grab";
+
+<ReactGrab
+  activationKey="Meta+K"
+  activationMode="toggle"
+  maxContextLines={5}
+/>
+```
+
+## Related Commands
+
+- [`grab init`](/api/cli/init) — Initialize React Grab in your project
+- [`grab add`](/api/cli/add) — Connect React Grab to your coding agent
+- [`grab remove`](/api/cli/remove) — Disconnect agent integrations

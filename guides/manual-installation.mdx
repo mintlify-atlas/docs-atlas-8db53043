@@ -1,0 +1,348 @@
+---
+title: 'Manual Installation'
+description: 'Install React Grab in custom setups and frameworks not covered by automatic installation'
+icon: 'wrench'
+---
+
+For custom React setups, unsupported frameworks, or when automatic installation doesn't work, you can manually integrate React Grab using one of the methods below.
+
+## Installation Methods
+
+Choose the method that best fits your setup:
+
+<CardGroup cols={2}>
+  <Card title="CDN Script" icon="cloud" href="#cdn-script">
+    Quick setup with a script tag
+  </Card>
+  <Card title="NPM Package" icon="box" href="#npm-package">
+    Install as a development dependency
+  </Card>
+  <Card title="HTML Script" icon="code" href="#html-script">
+    Add directly to your HTML file
+  </Card>
+  <Card title="Dynamic Import" icon="file-import" href="#dynamic-import">
+    Import conditionally in JavaScript
+  </Card>
+</CardGroup>
+
+## CDN Script
+
+The fastest way to add React Grab to any project:
+
+```html index.html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My App</title>
+    <script>
+      if (process.env.NODE_ENV === "development") {
+        const script = document.createElement("script");
+        script.src = "//unpkg.com/react-grab/dist/index.global.js";
+        script.crossOrigin = "anonymous";
+        document.head.appendChild(script);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+<Warning>
+  The CDN method requires that `process.env.NODE_ENV` is defined. Some build tools may not provide this variable.
+</Warning>
+
+## NPM Package
+
+For projects with a module bundler:
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install react-grab
+    ```
+  </Step>
+  
+  <Step title="Import in your entry file">
+    Add this at the top of your main JavaScript/TypeScript file:
+    
+    ```tsx src/index.tsx
+    if (process.env.NODE_ENV === "development") {
+      import("react-grab");
+    }
+    
+    // Your app code here
+    import React from "react";
+    import ReactDOM from "react-dom/client";
+    import App from "./App";
+    
+    ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+    ```
+  </Step>
+</Steps>
+
+## HTML Script
+
+For static HTML files or simple setups without build tools:
+
+```html index.html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>My App</title>
+    <!-- Only load in development -->
+    <script>
+      // Check if we're in development (you can use your own logic here)
+      const isDevelopment = window.location.hostname === "localhost" ||
+                            window.location.hostname === "127.0.0.1" ||
+                            window.location.hostname === "";
+      
+      if (isDevelopment) {
+        const script = document.createElement("script");
+        script.src = "//unpkg.com/react-grab/dist/index.global.js";
+        script.crossOrigin = "anonymous";
+        document.head.appendChild(script);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/your-app.js"></script>
+  </body>
+</html>
+```
+
+<Note>
+  This method uses hostname detection to determine if you're in development. Adjust the condition based on your setup.
+</Note>
+
+## Dynamic Import
+
+For advanced setups with custom module loading:
+
+```tsx src/index.tsx
+// Conditional import with error handling
+if (process.env.NODE_ENV === "development") {
+  import("react-grab")
+    .then(() => {
+      console.log("React Grab loaded");
+    })
+    .catch((error) => {
+      console.warn("Failed to load React Grab:", error);
+    });
+}
+
+// Rest of your app
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+```
+
+## Environment Detection
+
+Different frameworks and build tools use different methods to detect the environment:
+
+<CodeGroup>
+
+```js Webpack
+if (process.env.NODE_ENV === "development") {
+  import("react-grab");
+}
+```
+
+```js Vite
+if (import.meta.env.DEV) {
+  import("react-grab");
+}
+```
+
+```js Parcel
+if (process.env.NODE_ENV === "development") {
+  import("react-grab");
+}
+```
+
+```js Rollup
+if (process.env.NODE_ENV === "development") {
+  import("react-grab");
+}
+```
+
+```js esbuild
+if (process.env.NODE_ENV === "development") {
+  import("react-grab");
+}
+```
+
+```js Plain HTML
+if (window.location.hostname === "localhost") {
+  // Load React Grab
+}
+```
+
+</CodeGroup>
+
+## Framework-Specific Guides
+
+For detailed instructions on supported frameworks:
+
+<CardGroup cols={2}>
+  <Card title="Next.js" icon="triangle" href="/guides/nextjs">
+    App Router and Pages Router integration
+  </Card>
+  <Card title="Vite" icon="bolt-lightning" href="/guides/vite">
+    Vite-based React projects
+  </Card>
+  <Card title="Webpack" icon="cube" href="/guides/webpack">
+    Webpack-based React projects
+  </Card>
+  <Card title="TanStack Start" icon="layer-group" href="/guides/tanstack-start">
+    TanStack Start integration
+  </Card>
+</CardGroup>
+
+## Unsupported Frameworks
+
+React Grab currently doesn't have automatic setup for:
+
+- **Remix**: Manual CDN script in `root.tsx`
+- **Astro**: Manual script in layout component
+- **Gatsby**: Manual plugin or HTML script
+- **SvelteKit**: Not applicable (Svelte-specific)
+
+For these frameworks, use the [CDN Script](#cdn-script) or [NPM Package](#npm-package) method and adapt to your framework's structure.
+
+## Verification Steps
+
+After manual installation, verify React Grab is working:
+
+<Steps>
+  <Step title="Start your development server">
+    Use your framework's dev command (e.g., `npm run dev`, `npm start`).
+  </Step>
+  
+  <Step title="Open browser console">
+    Check for any errors related to React Grab loading.
+  </Step>
+  
+  <Step title="Test the copy feature">
+    - Hover over any UI element
+    - Press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux)
+    - Check your clipboard for the copied context:
+      ```
+      <div class="my-component">...</div>
+      in MyComponent at src/components/MyComponent.tsx:42:8
+      ```
+  </Step>
+  
+  <Step title="Verify production exclusion">
+    Build for production and ensure React Grab is not included in the bundle.
+  </Step>
+</Steps>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="React Grab not loading">
+    **Check the environment condition**: Make sure your development environment check is correct:
+    
+    ```js
+    // Common checks
+    console.log(process.env.NODE_ENV); // Should be "development"
+    console.log(import.meta.env.DEV); // Should be true (Vite)
+    console.log(window.location.hostname); // Should be "localhost" or "127.0.0.1"
+    ```
+    
+    **Check the browser console**: Look for any error messages related to loading React Grab.
+  </Accordion>
+  
+  <Accordion title="CORS errors with CDN">
+    If you see CORS errors when loading from unpkg.com:
+    
+    1. Ensure you're using `crossOrigin="anonymous"` on the script tag
+    2. Try using `https://` instead of `//` in the CDN URL
+    3. Consider using the NPM package method instead
+  </Accordion>
+  
+  <Accordion title="Module not found errors">
+    If you see "Cannot find module 'react-grab'":
+    
+    1. Install the package: `npm install react-grab`
+    2. Restart your development server
+    3. Clear any build cache
+  </Accordion>
+  
+  <Accordion title="Loading in production builds">
+    If React Grab is loading in production:
+    
+    1. Verify your environment check is correct
+    2. Ensure your build tool is configured to replace environment variables
+    3. Check that tree-shaking is enabled in your bundler
+  </Accordion>
+  
+  <Accordion title="TypeScript errors">
+    If you get TypeScript errors:
+    
+    ```bash
+    npm install -D @types/react-grab
+    ```
+    
+    Or add a type declaration:
+    
+    ```ts src/react-grab.d.ts
+    declare module "react-grab" {
+      const ReactGrab: any;
+      export default ReactGrab;
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Configuration
+
+For advanced use cases, you can configure React Grab programmatically:
+
+```tsx src/index.tsx
+if (process.env.NODE_ENV === "development") {
+  import("react-grab").then(() => {
+    // Configure React Grab after it loads
+    if (window.__REACT_GRAB__) {
+      window.__REACT_GRAB__.configure({
+        activationKey: "g",
+        activationMode: "toggle",
+        maxContextLines: 5,
+      });
+    }
+  });
+}
+```
+
+<Note>
+  See the [Configuration API](/api/options) for all available options.
+</Note>
+
+## Need Help?
+
+If you're having trouble with manual installation:
+
+1. Check the [troubleshooting guide](/installation#troubleshooting)
+2. Search existing [GitHub issues](https://github.com/aidenybai/react-grab/issues)
+3. Ask in the [Discord community](https://discord.com/invite/G7zxfUzkm7)
+4. [Open a new issue](https://github.com/aidenybai/react-grab/issues/new) with your setup details
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Connect to Agent" icon="link" href="/essentials/agent-integration">
+    Set up React Grab with your AI coding assistant
+  </Card>
+  <Card title="Configure Options" icon="sliders" href="/api/options">
+    Customize activation keys and behavior
+  </Card>
+</CardGroup>

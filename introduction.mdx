@@ -1,0 +1,82 @@
+---
+title: Introduction
+description: Select context for coding agents directly from your website
+---
+
+# What is React Grab?
+
+React Grab lets you select context for coding agents directly from your website. Point at any element and press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux) to copy the file name, React component, and HTML source code.
+
+<img src="https://github.com/aidenybai/react-grab/blob/main/packages/website/public/demo.gif?raw=true" alt="React Grab Demo" />
+
+## Why React Grab?
+
+Modern coding agents like Cursor, Claude Code, and GitHub Copilot are powerful, but they often struggle with understanding the exact context you want to modify. React Grab solves this by letting you select UI elements visually and automatically capturing all the relevant code context.
+
+<Note>
+React Grab makes coding agents run up to **3× faster** and more accurate by providing precise context.
+</Note>
+
+## Key Benefits
+
+- **Visual Selection** - Point and click to select any UI element instead of describing it
+- **Complete Context** - Automatically captures file path, component name, and HTML structure
+- **Zero Overhead** - Only runs in development mode, no production impact
+- **Framework Agnostic** - Works with Next.js, Vite, TanStack Start, and Webpack
+- **Agent Integration** - Built-in support for popular coding agents via MCP
+
+## Use Cases
+
+### Faster Bug Fixes
+
+Instead of describing "the login button in the header", just click it and copy. Your agent gets the exact file location and component structure.
+
+### Accurate Refactoring
+
+When refactoring UI components, select multiple elements to gather all related code paths. Your agent can see the full component hierarchy.
+
+### Onboarding New Developers
+
+New team members can explore the codebase visually. Hover over any element to see which file and component renders it.
+
+### Design Implementation
+
+Compare designs with implementation by selecting elements and asking your agent to match the design specs.
+
+## Performance Improvements
+
+By providing precise context, React Grab helps coding agents:
+
+- **Skip context search** - No need to scan multiple files looking for the right component
+- **Reduce iterations** - Get accurate changes on the first attempt
+- **Minimize token usage** - Only send relevant code to the agent
+
+According to [benchmarks](https://react-grab.com/blog/intro), developers using React Grab complete tasks up to **3× faster** compared to manually describing UI elements.
+
+## How It Works
+
+Once installed, hover over any UI element and press the activation key. React Grab captures:
+
+1. **File Path** - Exact location of the component file
+2. **Component Name** - React component name and line number
+3. **HTML Structure** - Rendered HTML with classes and attributes
+
+For example:
+
+```js
+<a class="ml-auto inline-block text-sm" href="#">
+  Forgot your password?
+</a>
+in LoginForm at components/login-form.tsx:46:19
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Get started in 2 minutes with our quick start guide
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed installation instructions for all frameworks
+  </Card>
+</CardGroup>

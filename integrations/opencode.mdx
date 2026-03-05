@@ -1,0 +1,295 @@
+---
+title: OpenCode Integration
+description: Use React Grab with OpenCode CLI
+---
+
+The OpenCode integration enables React Grab to communicate with the OpenCode CLI, allowing you to make targeted UI changes through natural language powered by OpenCode's AI capabilities.
+
+## Prerequisites
+
+<Note>
+  You must have OpenCode installed to use this integration.
+</Note>
+
+Install OpenCode:
+
+```bash
+npm install -g opencode-ai@latest
+```
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @react-grab/opencode
+    # or
+    pnpm add @react-grab/opencode
+    # or
+    bun add @react-grab/opencode
+    # or
+    yarn add @react-grab/opencode
+    ```
+  </Step>
+
+  <Step title="Start the server">
+    The server runs on port `6567` by default.
+
+    ### Quick Start (CLI)
+
+    Start the server in the background before running your dev server:
+
+    ```bash
+    npx @react-grab/opencode@latest && pnpm run dev
+    ```
+
+    <Note>
+      The server will run as a detached background process. Stopping your dev server (Ctrl+C) won't stop the React Grab server.
+    </Note>
+
+    To stop it:
+
+    ```bash
+    pkill -f "react-grab.*server"
+    ```
+  </Step>
+
+  <Step title="Add the client to your app">
+    Choose your framework:
+
+    ### Script Tag
+
+    ```html
+    <script src="//unpkg.com/react-grab/dist/index.global.js"></script>
+    <script src="//unpkg.com/@react-grab/opencode/dist/client.global.js"></script>
+    ```
+
+    ### Next.js
+
+    Using the `Script` component in your `app/layout.tsx`:
+
+    ```jsx
+    import Script from "next/script";
+
+    export default function RootLayout({ children }) {
+      return (
+        <html>
+          <head>
+            {process.env.NODE_ENV === "development" && (
+              <>
+                <Script
+                  src="//unpkg.com/react-grab/dist/index.global.js"
+                  strategy="beforeInteractive"
+                />
+                <Script
+                  src="//unpkg.com/@react-grab/opencode/dist/client.global.js"
+                  strategy="lazyOnload"
+                />
+              </>
+            )}
+          </head>
+          <body>{children}</body>
+        </html>
+      );
+    }
+    ```
+
+    ### ES Module
+
+    ```tsx
+    import { attachAgent } from "@react-grab/opencode/client";
+
+    attachAgent();
+    ```
+  </Step>
+</Steps>
+
+## Recommended: Config File Setup
+
+For better lifecycle management, start the server from your config file. This ensures the server stops when your dev server stops:
+
+### Vite
+
+```ts
+// vite.config.ts
+import { startServer } from "@react-grab/opencode/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+### Next.js
+
+```ts
+// next.config.ts
+import { startServer } from "@react-grab/opencode/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+## How It Works
+
+```
+┌─────────────────┐      HTTP       ┌─────────────────┐     stdin      ┌─────────────────┐
+│                 │  localhost:6567 │                 │                │                 │
+│   React Grab    │ ──────────────► │     Server      │ ─────────────► │    opencode     │
+│    (Browser)    │ ◄────────────── │   (Node.js)     │ ◄───────────── │      (CLI)      │
+│                 │       SSE       │                 │     stdout     │                 │
+└─────────────────┘                 └─────────────────┘                └─────────────────┘
+      Client                              Server                            Agent
+```
+
+1. **React Grab** sends the selected element context to the server via HTTP POST
+2. **Server** receives the request and spawns the `opencode` CLI process
+3. **OpenCode** processes the request and streams JSON responses to stdout
+4. **Server** relays status updates to the client via Server-Sent Events (SSE)
+
+## Usage
+
+Once installed, you can:
+
+1. **Select an element** in your browser by hovering over it with React Grab active
+2. **Right-click** or use the context menu to choose "Edit with OpenCode"
+3. **Enter your prompt** describing what you want to change
+4. **Watch** as OpenCode makes the changes in real-time
+
+The integration automatically provides:
+- The selected element's HTML structure
+- Component name and file location
+- Line numbers for precise targeting
+
+## Example Workflow
+
+<Steps>
+  <Step title="Select the element">
+    Hover over any UI element in your browser and press **Cmd+C** (Mac) or **Ctrl+C** (Windows/Linux).
+  </Step>
+
+  <Step title="Trigger OpenCode">
+    Right-click and choose "Edit with OpenCode" from the context menu.
+  </Step>
+
+  <Step title="Describe your change">
+    Enter a prompt like:
+    ```
+    Make this button larger and add a hover animation
+    ```
+  </Step>
+
+  <Step title="Review the changes">
+    OpenCode will modify the component file, and you'll see the changes reflected in your browser.
+  </Step>
+</Steps>
+
+## Advanced Configuration
+
+You can customize the OpenCode provider with advanced options:
+
+```typescript
+import { createOpenCodeAgentProvider } from "@react-grab/opencode/client";
+
+const provider = createOpenCodeAgentProvider({
+  serverUrl: "http://localhost:6567",
+  getOptions: () => ({
+    model: "claude-sonnet-4-20250514",  // AI model to use
+    agent: "build",                      // Agent type: "build" or "plan"
+    directory: "/path/to/project",      // Project directory
+  }),
+});
+```
+
+### Configuration Options
+
+- **`model`**: Specify which AI model OpenCode should use
+  - Default: `claude-sonnet-4-20250514`
+  - Other options depend on your OpenCode configuration
+
+- **`agent`**: Choose the agent type
+  - `build`: Makes direct code changes (default)
+  - `plan`: Creates a plan before executing changes
+
+- **`directory`**: Specify the project directory
+  - Defaults to the current working directory
+  - Useful for monorepo setups
+
+### Server URL
+
+By default, the client connects to `http://localhost:6567`. You can customize this:
+
+```typescript
+const provider = createOpenCodeAgentProvider({
+  serverUrl: "http://localhost:8080",
+});
+```
+
+## Why Use OpenCode with React Grab?
+
+OpenCode provides:
+
+- **Intelligent code generation**: Creates production-ready code
+- **Context-aware changes**: Understands your project structure
+- **Multiple agent modes**: Choose between quick builds or planned changes
+- **Flexible model selection**: Use different AI models for different tasks
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="OpenCode CLI not found">
+    Make sure you have installed OpenCode globally:
+    ```bash
+    npm install -g opencode-ai@latest
+    ```
+
+    Verify it's installed:
+    ```bash
+    opencode --version
+    ```
+  </Accordion>
+
+  <Accordion title="Server won't start">
+    - Check if port 6567 is already in use
+    - Try killing existing processes: `pkill -f "react-grab.*server"`
+    - Ensure OpenCode is properly installed
+  </Accordion>
+
+  <Accordion title="No response from OpenCode">
+    - Verify OpenCode is configured correctly
+    - Check that you have API credentials set up
+    - Ensure the OpenCode CLI is working: `opencode --help`
+  </Accordion>
+
+  <Accordion title="Context not being sent">
+    - Verify the client script is loaded in your browser
+    - Check browser console for connection errors
+    - Ensure the server is running before loading your app
+  </Accordion>
+
+  <Accordion title="Wrong directory being modified">
+    - Set the `directory` option in your provider configuration
+    - Check the `REACT_GRAB_CWD` environment variable
+    - Verify the working directory in server logs
+  </Accordion>
+</AccordionGroup>
+
+## Performance Benefits
+
+Using React Grab with OpenCode can make your development workflow up to **3× faster** by:
+
+- Providing precise element context without manual searching
+- Reducing the need for clarification questions
+- Including exact file paths and line numbers
+- Supporting both quick builds and planned changes
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with React Grab
+  </Card>
+  <Card title="Plugin API" icon="puzzle-piece" href="/api/plugins">
+    Learn about the plugin system
+  </Card>
+</CardGroup>

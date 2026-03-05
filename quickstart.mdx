@@ -1,80 +1,146 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get started with React Grab in 2 minutes
 ---
 
-## Get started in three steps
+# Quick Start
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+Get React Grab running in your project in under 2 minutes.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+Make sure you're in your project root directory (where `next.config.ts` or `vite.config.ts` is located) before running the installation command.
 </Note>
+
+## Installation
+
+<Steps>
+  <Step title="Run the initialization command">
+    Open your terminal and run:
+
+    ```bash
+    npx -y grab@latest init
+    ```
+
+    The CLI will automatically:
+    - Detect your framework (Next.js, Vite, TanStack Start, or Webpack)
+    - Identify your package manager (npm, yarn, pnpm, or bun)
+    - Install the necessary dependencies
+    - Configure your project files
+  </Step>
+
+  <Step title="Start your development server">
+    Start your development server as usual:
+
+    <CodeGroup>
+    ```bash npm
+    npm run dev
+    ```
+
+    ```bash yarn
+    yarn dev
+    ```
+
+    ```bash pnpm
+    pnpm dev
+    ```
+
+    ```bash bun
+    bun dev
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Try it out">
+    Open your application in a browser and hover over any UI element. Press:
+
+    - **⌘C** (Cmd+C) on Mac
+    - **Ctrl+C** on Windows/Linux
+
+    The element's context will be copied to your clipboard:
+
+    ```js
+    <a class="ml-auto inline-block text-sm" href="#">
+      Forgot your password?
+    </a>
+    in LoginForm at components/login-form.tsx:46:19
+    ```
+  </Step>
+
+  <Step title="Paste into your coding agent">
+    Paste the copied context into your favorite coding agent:
+
+    - Cursor
+    - Claude Code
+    - GitHub Copilot
+    - Any other AI coding assistant
+
+    Your agent now has the exact file path, component name, and HTML structure to work with.
+  </Step>
+</Steps>
+
+## What Gets Copied?
+
+When you select an element, React Grab copies three pieces of information:
+
+1. **HTML Structure** - The rendered HTML with all classes and attributes
+2. **Component Name** - The React component that renders this element
+3. **File Location** - Exact file path and line number
+
+<Tip>
+The copied format is optimized for coding agents to understand context quickly and accurately.
+</Tip>
+
+## Connect to MCP (Optional)
+
+For tighter integration with agents that support the Model Context Protocol:
+
+```bash
+npx -y grab@latest add mcp
+```
+
+This enables your agent to automatically access React Grab context without manual copying.
+
+## Verify Installation
+
+To verify React Grab is working:
+
+1. Open your browser's developer console
+2. Look for the React Grab activation indicator when hovering over elements
+3. Try pressing ⌘C/Ctrl+C on an element
+4. Paste somewhere to see the captured context
+
+<Warning>
+React Grab only runs in development mode (`NODE_ENV === "development"`). You won't see it in production builds.
+</Warning>
+
+## Troubleshooting
+
+### Nothing happens when I press ⌘C/Ctrl+C
+
+- Make sure you're hovering over an element first
+- Check that your development server is running
+- Verify React Grab was installed correctly by checking your layout/entry file
+
+### The wrong component name is shown
+
+- This can happen with HOCs or wrapper components
+- Try selecting a child element for more specific context
+
+### Installation failed
+
+If automatic installation fails:
+
+1. Check you're in the correct directory (project root)
+2. Try running with `--force` flag: `npx -y grab@latest init --force`
+3. See [Manual Installation](/installation#manual-installation) for framework-specific setup
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation Guide" icon="book" href="/installation">
+    Learn about manual installation and advanced configuration
+  </Card>
+  <Card title="Try the Demo" icon="play" href="https://react-grab.com">
+    See React Grab in action on the official website
+  </Card>
+</CardGroup>

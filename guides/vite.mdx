@@ -1,0 +1,197 @@
+---
+title: 'Vite Integration'
+description: 'Install React Grab in your Vite project with index.html setup'
+icon: 'bolt-lightning'
+---
+
+React Grab works seamlessly with Vite-based React projects, loading efficiently through your `index.html` file.
+
+## Automatic Installation
+
+The quickest way to get started:
+
+<Steps>
+  <Step title="Run the CLI">
+    Navigate to your project root (where `vite.config.ts` is located) and run:
+    
+    ```bash
+    npx -y grab@latest init
+    ```
+    
+    The CLI will automatically detect your Vite setup and configure React Grab.
+  </Step>
+  
+  <Step title="Start your dev server">
+    Launch your Vite development server:
+    
+    ```bash
+    npm run dev
+    ```
+  </Step>
+  
+  <Step title="Test the installation">
+    Hover over any UI element and press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux) to copy its context.
+  </Step>
+</Steps>
+
+## Manual Installation
+
+If you need to manually integrate React Grab into your Vite project:
+
+<Steps>
+  <Step title="Update your index.html">
+    Add the following script inside the `<head>` section of your `index.html`:
+    
+    ```html index.html
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <script type="module">
+          if (import.meta.env.DEV) {
+            import("react-grab");
+          }
+        </script>
+      </head>
+      <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+      </body>
+    </html>
+    ```
+  </Step>
+  
+  <Step title="Install the package">
+    Install React Grab as a dev dependency:
+    
+    ```bash
+    npm install -D react-grab
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The `import.meta.env.DEV` check ensures React Grab only loads in development mode. Do not remove this condition.
+</Warning>
+
+## How It Works
+
+Vite's module system allows for dynamic imports using `import.meta.env.DEV`:
+
+- **Development**: When `import.meta.env.DEV` is `true`, React Grab loads and activates
+- **Production**: When building for production, the condition is `false` and the import is stripped out
+- **Type-safe**: The module script ensures proper ES module handling
+
+This approach is more efficient than using a CDN because:
+- Vite can optimize and bundle the import
+- No external network requests needed
+- Better caching and hot module replacement (HMR) support
+
+## Vite Configuration
+
+No additional Vite configuration is required. React Grab works out of the box with:
+
+- React
+- Preact
+- SolidJS
+- Vue (with JSX)
+- Any other framework using Vite
+
+## Verification
+
+Confirm React Grab is working correctly:
+
+<Steps>
+  <Step title="Start development server">
+    ```bash
+    npm run dev
+    ```
+    
+    Check the browser console for any errors during startup.
+  </Step>
+  
+  <Step title="Test the copy feature">
+    - Hover over any UI element
+    - Press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux)
+    - Check your clipboard for the copied context
+  </Step>
+  
+  <Step title="Verify production exclusion">
+    Build your app and confirm React Grab is not included:
+    
+    ```bash
+    npm run build
+    ```
+    
+    React Grab should not appear in your production bundle.
+  </Step>
+</Steps>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Module not found error">
+    Make sure you've installed `react-grab` as a dependency:
+    
+    ```bash
+    npm install -D react-grab
+    ```
+    
+    Then restart your dev server.
+  </Accordion>
+  
+  <Accordion title="Script tag placement">
+    The script must be placed in the `<head>` section, before your main app script. This ensures React Grab loads before your React components.
+  </Accordion>
+  
+  <Accordion title="TypeScript errors">
+    If you see TypeScript errors related to `import.meta.env`, ensure your `tsconfig.json` includes:
+    
+    ```json
+    {
+      "compilerOptions": {
+        "types": ["vite/client"]
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Not working with Vitest">
+    React Grab is designed for browser environments. It should not affect Vitest tests since they run in Node.js. If you encounter issues, check that your test setup doesn't try to import the index.html.
+  </Accordion>
+</AccordionGroup>
+
+## Alternative: Import in Entry File
+
+If you prefer not to modify `index.html`, you can import React Grab in your main entry file:
+
+```tsx src/main.tsx
+if (import.meta.env.DEV) {
+  import("react-grab");
+}
+
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+<Warning>
+  Using the entry file method may cause a slight delay in React Grab initialization. The `index.html` method is recommended for the best experience.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Connect to Your Agent" icon="link" href="/essentials/agent-integration">
+    Integrate React Grab with your AI coding assistant
+  </Card>
+  <Card title="Customize Settings" icon="gear" href="/api-reference/options">
+    Configure activation keys and behavior
+  </Card>
+</CardGroup>

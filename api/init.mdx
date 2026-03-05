@@ -1,0 +1,132 @@
+---
+title: "init()"
+description: "Initialize React Grab and return the API instance"
+---
+
+## Overview
+
+The `init()` function is the primary entry point for React Grab. It initializes the library, sets up event listeners, and returns an API instance that you can use to control React Grab programmatically.
+
+## Signature
+
+```typescript
+function init(options?: Options): ReactGrabAPI
+```
+
+## Parameters
+
+<ParamField path="options" type="Options" optional>
+  Configuration options for React Grab
+
+  <Expandable title="Options properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether React Grab is enabled on initialization. If set to `false`, the function returns a no-op API.
+    </ParamField>
+
+    <ParamField path="activationMode" type="'toggle' | 'hold'" default="'toggle'">
+      How React Grab is activated:
+      - `'toggle'`: Press activation key once to activate, press again to deactivate
+      - `'hold'`: Hold activation key to activate, release to deactivate
+    </ParamField>
+
+    <ParamField path="keyHoldDuration" type="number" default="120">
+      Duration in milliseconds to hold the activation key before activation (in ms)
+    </ParamField>
+
+    <ParamField path="allowActivationInsideInput" type="boolean" default="true">
+      Whether to allow activation when focus is inside an input field
+    </ParamField>
+
+    <ParamField path="maxContextLines" type="number" default="3">
+      Maximum number of context lines to include when copying elements
+    </ParamField>
+
+    <ParamField path="activationKey" type="ActivationKey" optional>
+      Custom activation key configuration. Can be a string (e.g., `'KeyC'`) or a function that receives a KeyboardEvent and returns a boolean.
+      
+      By default, uses Cmd+C (Mac) or Ctrl+C (Windows/Linux).
+    </ParamField>
+
+    <ParamField path="getContent" type="(elements: Element[]) => Promise<string> | string" optional>
+      Custom function to generate content when copying elements. Receives an array of selected elements and should return the content to copy.
+    </ParamField>
+
+    <ParamField path="freezeReactUpdates" type="boolean" default="true">
+      Whether to freeze React state updates while React Grab is active. This prevents UI changes from interfering with element selection.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="api" type="ReactGrabAPI">
+  Returns an API instance with methods to control React Grab programmatically. See [ReactGrabAPI](/api/react-grab-api) for details.
+</ResponseField>
+
+## Usage
+
+### Basic Initialization
+
+```typescript
+import { init } from 'react-grab';
+
+const api = init();
+```
+
+### With Custom Options
+
+```typescript
+import { init } from 'react-grab';
+
+const api = init({
+  activationMode: 'hold',
+  keyHoldDuration: 200,
+  maxContextLines: 5,
+  freezeReactUpdates: true
+});
+```
+
+### With Custom Activation Key
+
+```typescript
+import { init } from 'react-grab';
+
+const api = init({
+  activationKey: 'KeyG', // Use 'G' key instead of 'C'
+});
+```
+
+### With Custom Content Generator
+
+```typescript
+import { init } from 'react-grab';
+
+const api = init({
+  getContent: async (elements) => {
+    return elements.map(el => el.outerHTML).join('\n');
+  }
+});
+```
+
+### Disabling React Grab
+
+```typescript
+import { init } from 'react-grab';
+
+const api = init({ enabled: false });
+// Returns a no-op API - all methods are safe to call but do nothing
+```
+
+## Behavior
+
+- **Single Initialization**: The function can only be called once successfully. Subsequent calls return a no-op API.
+- **Server-Side Rendering**: When called in a non-browser environment (e.g., during SSR), returns a no-op API.
+- **Built-in Plugins**: Automatically registers built-in plugins (copy, comment, copyHtml, copyStyles, open).
+- **Event Listeners**: Sets up keyboard, mouse, and touch event listeners for element selection.
+- **Cleanup**: The returned API includes a `dispose()` method to clean up all listeners and resources.
+
+## Notes
+
+- The `enabled` option cannot be changed via `setOptions()` after initialization. Use `setEnabled()` on the API instead.
+- Options can be provided via a `<script>` tag with `data-react-grab-options` attribute, which will be merged with the options passed to `init()`.
+- The activation key defaults to Cmd+C on Mac and Ctrl+C on Windows/Linux.

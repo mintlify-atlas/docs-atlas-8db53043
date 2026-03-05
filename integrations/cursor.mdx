@@ -1,0 +1,227 @@
+---
+title: Cursor Integration
+description: Use React Grab with Cursor AI editor
+---
+
+The Cursor integration enables React Grab to communicate directly with the Cursor Agent CLI, allowing you to make targeted UI changes through natural language.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @react-grab/cursor
+    # or
+    pnpm add @react-grab/cursor
+    # or
+    bun add @react-grab/cursor
+    # or
+    yarn add @react-grab/cursor
+    ```
+  </Step>
+
+  <Step title="Start the server">
+    The server runs on port `5567` by default.
+
+    ### Quick Start (CLI)
+
+    Start the server in the background before running your dev server:
+
+    ```bash
+    npx @react-grab/cursor@latest && pnpm run dev
+    ```
+
+    <Note>
+      The server will run as a detached background process. Stopping your dev server (Ctrl+C) won't stop the React Grab server.
+    </Note>
+
+    To stop it:
+
+    ```bash
+    pkill -f "react-grab.*server"
+    ```
+  </Step>
+
+  <Step title="Add the client to your app">
+    Choose your framework:
+
+    ### Script Tag
+
+    ```html
+    <script src="//unpkg.com/react-grab/dist/index.global.js"></script>
+    <script src="//unpkg.com/@react-grab/cursor/dist/client.global.js"></script>
+    ```
+
+    ### Next.js
+
+    Using the `Script` component in your `app/layout.tsx`:
+
+    ```jsx
+    import Script from "next/script";
+
+    export default function RootLayout({ children }) {
+      return (
+        <html>
+          <head>
+            {process.env.NODE_ENV === "development" && (
+              <>
+                <Script
+                  src="//unpkg.com/react-grab/dist/index.global.js"
+                  strategy="beforeInteractive"
+                />
+                <Script
+                  src="//unpkg.com/@react-grab/cursor/dist/client.global.js"
+                  strategy="lazyOnload"
+                />
+              </>
+            )}
+          </head>
+          <body>{children}</body>
+        </html>
+      );
+    }
+    ```
+
+    ### ES Module
+
+    ```tsx
+    import { attachAgent } from "@react-grab/cursor/client";
+
+    attachAgent();
+    ```
+  </Step>
+</Steps>
+
+## Recommended: Config File Setup
+
+For better lifecycle management, start the server from your config file. This ensures the server stops when your dev server stops:
+
+### Vite
+
+```ts
+// vite.config.ts
+import { startServer } from "@react-grab/cursor/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+### Next.js
+
+```ts
+// next.config.ts
+import { startServer } from "@react-grab/cursor/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+## How It Works
+
+```
+┌─────────────────┐      HTTP       ┌─────────────────┐     stdin      ┌─────────────────┐
+│                 │  localhost:5567 │                 │                │                 │
+│   React Grab    │ ──────────────► │     Server      │ ─────────────► │  cursor-agent   │
+│    (Browser)    │ ◄────────────── │   (Node.js)     │ ◄───────────── │      (CLI)      │
+│                 │       SSE       │                 │     stdout     │                 │
+└─────────────────┘                 └─────────────────┘                └─────────────────┘
+      Client                              Server                            Agent
+```
+
+1. **React Grab** sends the selected element context to the server via HTTP POST
+2. **Server** receives the request and spawns the `cursor-agent` CLI process
+3. **cursor-agent** processes the request and streams JSON responses to stdout
+4. **Server** relays status updates to the client via Server-Sent Events (SSE)
+
+## Usage
+
+Once installed, you can:
+
+1. **Select an element** in your browser by hovering over it with React Grab active
+2. **Right-click** or use the context menu to choose "Edit with Cursor"
+3. **Enter your prompt** describing what you want to change
+4. **Watch** as Cursor Agent makes the changes in real-time
+
+The integration automatically provides:
+- The selected element's HTML structure
+- Component name and file location
+- Line numbers for precise targeting
+
+## Example Workflow
+
+<Steps>
+  <Step title="Select the element">
+    Hover over a button in your UI and press **Cmd+C** (Mac) or **Ctrl+C** (Windows/Linux) to select it.
+  </Step>
+
+  <Step title="Trigger Cursor Agent">
+    Right-click and choose "Edit with Cursor" from the context menu.
+  </Step>
+
+  <Step title="Describe your change">
+    Enter a prompt like:
+    ```
+    Make this button primary color with rounded corners
+    ```
+  </Step>
+
+  <Step title="Review the changes">
+    Cursor Agent will modify the component file, and you'll see the changes reflected in your browser immediately.
+  </Step>
+</Steps>
+
+## Advanced Configuration
+
+You can customize the Cursor provider:
+
+```typescript
+import { createCursorAgentProvider } from "@react-grab/cursor/client";
+
+const provider = createCursorAgentProvider({
+  serverUrl: "http://localhost:5567",
+  // Add custom configuration here
+});
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server won't start">
+    - Check if port 5567 is already in use
+    - Try killing existing processes: `pkill -f "react-grab.*server"`
+    - Ensure you have the Cursor Agent CLI installed
+  </Accordion>
+
+  <Accordion title="No response from Cursor Agent">
+    - Verify the Cursor Agent CLI is installed and accessible
+    - Check server logs for error messages
+    - Ensure your project is open in Cursor
+  </Accordion>
+
+  <Accordion title="Context not being sent">
+    - Verify the client script is loaded in your browser
+    - Check browser console for connection errors
+    - Ensure the server is running before loading your app
+  </Accordion>
+</AccordionGroup>
+
+## Performance Benefits
+
+Using React Grab with Cursor can make your development workflow up to **3× faster** by:
+
+- Eliminating the need to manually locate files and components
+- Providing precise context about the exact element to modify
+- Reducing back-and-forth with the AI by including all relevant information upfront
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with React Grab
+  </Card>
+  <Card title="Plugin API" icon="puzzle-piece" href="/api/plugins">
+    Learn about the plugin system
+  </Card>
+</CardGroup>

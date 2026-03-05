@@ -1,0 +1,290 @@
+---
+title: GitHub Copilot Integration
+description: Use React Grab with GitHub Copilot CLI
+---
+
+The GitHub Copilot integration enables React Grab to communicate with the Copilot CLI, allowing you to make targeted UI changes through natural language powered by GitHub's AI.
+
+## Prerequisites
+
+<Note>
+  You must have the GitHub Copilot CLI installed to use this integration.
+</Note>
+
+Install GitHub Copilot CLI:
+
+```bash
+npm install -g @github/copilot-cli
+```
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @react-grab/copilot
+    # or
+    pnpm add @react-grab/copilot
+    # or
+    bun add @react-grab/copilot
+    # or
+    yarn add @react-grab/copilot
+    ```
+  </Step>
+
+  <Step title="Start the server">
+    The server runs on the default relay port.
+
+    ### Quick Start (CLI)
+
+    Start the server in the background before running your dev server:
+
+    ```bash
+    npx @react-grab/copilot@latest && pnpm run dev
+    ```
+
+    <Note>
+      The server will run as a detached background process. Stopping your dev server (Ctrl+C) won't stop the React Grab server.
+    </Note>
+
+    To stop it:
+
+    ```bash
+    pkill -f "react-grab.*server"
+    ```
+  </Step>
+
+  <Step title="Add the client to your app">
+    Choose your framework:
+
+    ### Script Tag
+
+    ```html
+    <script src="//unpkg.com/react-grab/dist/index.global.js"></script>
+    <script src="//unpkg.com/@react-grab/copilot/dist/client.global.js"></script>
+    ```
+
+    ### Next.js
+
+    Using the `Script` component in your `app/layout.tsx`:
+
+    ```jsx
+    import Script from "next/script";
+
+    export default function RootLayout({ children }) {
+      return (
+        <html>
+          <head>
+            {process.env.NODE_ENV === "development" && (
+              <>
+                <Script
+                  src="//unpkg.com/react-grab/dist/index.global.js"
+                  strategy="beforeInteractive"
+                />
+                <Script
+                  src="//unpkg.com/@react-grab/copilot/dist/client.global.js"
+                  strategy="lazyOnload"
+                />
+              </>
+            )}
+          </head>
+          <body>{children}</body>
+        </html>
+      );
+    }
+    ```
+
+    ### ES Module
+
+    ```tsx
+    import { attachAgent } from "@react-grab/copilot/client";
+
+    attachAgent();
+    ```
+  </Step>
+</Steps>
+
+## Recommended: Config File Setup
+
+For better lifecycle management, start the server from your config file:
+
+### Vite
+
+```ts
+// vite.config.ts
+import { startServer } from "@react-grab/copilot/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+### Next.js
+
+```ts
+// next.config.ts
+import { startServer } from "@react-grab/copilot/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+## How It Works
+
+```
+┌─────────────────┐      HTTP       ┌─────────────────┐      CLI       ┌─────────────────┐
+│                 │                 │                 │                │                 │
+│   React Grab    │ ──────────────► │     Server      │ ─────────────► │  Copilot CLI    │
+│    (Browser)    │ ◄────────────── │   (Node.js)     │ ◄───────────── │                 │
+│                 │       SSE       │                 │                │                 │
+└─────────────────┘                 └─────────────────┘                └─────────────────┘
+      Client                              Server                            Agent
+```
+
+1. **React Grab** sends the selected element context to the server via HTTP POST
+2. **Server** receives the request and spawns the Copilot CLI process
+3. **Copilot CLI** processes the request with `--silent`, `--allow-all`, and `--no-color` flags
+4. **Server** relays status updates to the client via Server-Sent Events (SSE)
+
+## Usage
+
+Once installed, you can:
+
+1. **Select an element** in your browser by hovering over it with React Grab active
+2. **Right-click** or use the context menu to choose "Edit with Copilot"
+3. **Enter your prompt** describing what you want to change
+4. **Watch** as GitHub Copilot makes the changes in real-time
+
+The integration automatically provides:
+- The selected element's HTML structure
+- Component name and file location
+- Line numbers for precise targeting
+
+## Example Workflow
+
+<Steps>
+  <Step title="Select the element">
+    Hover over a form input in your UI and press **Cmd+C** (Mac) or **Ctrl+C** (Windows/Linux).
+  </Step>
+
+  <Step title="Trigger Copilot">
+    Right-click and choose "Edit with Copilot" from the context menu.
+  </Step>
+
+  <Step title="Describe your change">
+    Enter a prompt like:
+    ```
+    Add email validation to this input and show error message below
+    ```
+  </Step>
+
+  <Step title="Review the changes">
+    Copilot will modify the component file, and you'll see the changes reflected in your browser.
+  </Step>
+</Steps>
+
+## Advanced Configuration
+
+You can customize the Copilot provider with options:
+
+```typescript
+import { createCopilotAgentProvider } from "@react-grab/copilot/client";
+
+const provider = createCopilotAgentProvider({
+  serverUrl: "http://localhost:8080",
+  getOptions: () => ({
+    model: "gpt-4",           // Specify the AI model
+    cwd: "/path/to/project",  // Custom working directory
+  }),
+});
+```
+
+### Session Management
+
+The Copilot integration supports session resumption for continued conversations:
+
+```typescript
+// Sessions are automatically managed
+// Each new request in the same session maintains context
+```
+
+### Undo Support
+
+You can undo the last change made by Copilot:
+
+```typescript
+// The integration tracks the last session
+// Call undo to revert the most recent change
+```
+
+## CLI Arguments
+
+The integration automatically passes these arguments to the Copilot CLI:
+
+- `-p` - The prompt describing the change
+- `--silent` - Suppress interactive prompts
+- `--allow-all` - Auto-approve all changes
+- `--no-color` - Disable color output for parsing
+- `--model` - Specify the AI model (if provided)
+- `--resume` - Resume a previous session (if available)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Copilot CLI not found">
+    Make sure you have installed the GitHub Copilot CLI:
+    ```bash
+    npm install -g @github/copilot-cli
+    ```
+
+    Verify it's installed:
+    ```bash
+    copilot --version
+    ```
+  </Accordion>
+
+  <Accordion title="Server won't start">
+    - Check if the default port is already in use
+    - Try killing existing processes: `pkill -f "react-grab.*server"`
+    - Check server logs for error messages
+  </Accordion>
+
+  <Accordion title="No response from Copilot">
+    - Verify you're logged into GitHub Copilot CLI
+    - Check that you have an active Copilot subscription
+    - Ensure the Copilot CLI is working: `copilot --help`
+  </Accordion>
+
+  <Accordion title="Context not being sent">
+    - Verify the client script is loaded in your browser
+    - Check browser console for connection errors
+    - Ensure the server is running before loading your app
+  </Accordion>
+
+  <Accordion title="Changes not appearing">
+    - Check that your files are writable
+    - Verify the working directory is correct
+    - Look for error messages in stderr output
+  </Accordion>
+</AccordionGroup>
+
+## Performance Benefits
+
+Using React Grab with GitHub Copilot can make your development workflow up to **3× faster** by:
+
+- Eliminating manual file navigation and component searching
+- Providing precise context about the exact element to modify
+- Reducing back-and-forth by including all relevant information upfront
+- Supporting session continuity for related changes
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with React Grab
+  </Card>
+  <Card title="Plugin API" icon="puzzle-piece" href="/api/plugins">
+    Learn about the plugin system
+  </Card>
+</CardGroup>

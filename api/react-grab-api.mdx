@@ -1,0 +1,632 @@
+---
+title: "ReactGrabAPI"
+description: "Complete API reference for the ReactGrabAPI interface"
+---
+
+## Overview
+
+The `ReactGrabAPI` interface provides programmatic control over React Grab. It's returned by the `init()` function and includes methods to activate/deactivate React Grab, manage state, register plugins, and more.
+
+## Type Definition
+
+```typescript
+interface ReactGrabAPI {
+  activate: () => void;
+  deactivate: () => void;
+  toggle: () => void;
+  comment: () => void;
+  isActive: () => boolean;
+  isEnabled: () => boolean;
+  setEnabled: (enabled: boolean) => void;
+  getToolbarState: () => ToolbarState | null;
+  setToolbarState: (state: Partial<ToolbarState>) => void;
+  onToolbarStateChange: (callback: (state: ToolbarState) => void) => () => void;
+  dispose: () => void;
+  copyElement: (elements: Element | Element[]) => Promise<boolean>;
+  getSource: (element: Element) => Promise<SourceInfo | null>;
+  getStackContext: (element: Element) => Promise<string>;
+  getState: () => ReactGrabState;
+  setOptions: (options: SettableOptions) => void;
+  registerPlugin: (plugin: Plugin) => void;
+  unregisterPlugin: (name: string) => void;
+  getPlugins: () => string[];
+  getDisplayName: (element: Element) => string | null;
+}
+```
+
+## Methods
+
+### activate()
+
+Activates React Grab, allowing element selection.
+
+```typescript
+api.activate(): void
+```
+
+**Example:**
+```typescript
+const api = init();
+api.activate();
+```
+
+**Notes:**
+- Only activates if React Grab is currently enabled
+- Clears any pending comment mode
+- Does nothing if already active
+
+---
+
+### deactivate()
+
+Deactivates React Grab, stopping element selection.
+
+```typescript
+api.deactivate(): void
+```
+
+**Example:**
+```typescript
+const api = init();
+api.deactivate();
+```
+
+**Notes:**
+- Works even if currently in a copying state
+- Cleans up all active selections and overlays
+- Restores previously focused elements
+
+---
+
+### toggle()
+
+Toggles React Grab between active and inactive states.
+
+```typescript
+api.toggle(): void
+```
+
+**Example:**
+```typescript
+const api = init();
+api.toggle(); // Activates
+api.toggle(); // Deactivates
+```
+
+---
+
+### comment()
+
+Activates comment mode, which allows adding a text prompt to copied elements.
+
+```typescript
+api.comment(): void
+```
+
+**Example:**
+```typescript
+const api = init();
+api.comment();
+// Now when you select an element, you'll be prompted for a comment
+```
+
+**Notes:**
+- If already in comment mode and active, deactivates React Grab
+- Sets pending comment mode flag if not already active
+
+---
+
+### isActive()
+
+Checks if React Grab is currently active.
+
+```typescript
+api.isActive(): boolean
+```
+
+**Example:**
+```typescript
+const api = init();
+if (api.isActive()) {
+  console.log('React Grab is active');
+}
+```
+
+**Returns:**
+- `true` if React Grab is active and element selection is enabled
+- `false` otherwise
+
+---
+
+### isEnabled()
+
+Checks if React Grab is enabled.
+
+```typescript
+api.isEnabled(): boolean
+```
+
+**Example:**
+```typescript
+const api = init();
+if (api.isEnabled()) {
+  console.log('React Grab is enabled');
+}
+```
+
+**Returns:**
+- `true` if React Grab is enabled
+- `false` if disabled
+
+**Notes:**
+- Enabled state is separate from active state
+- When disabled, React Grab cannot be activated
+
+---
+
+### setEnabled()
+
+Enables or disables React Grab.
+
+```typescript
+api.setEnabled(enabled: boolean): void
+```
+
+<ParamField path="enabled" type="boolean" required>
+  Whether to enable or disable React Grab
+</ParamField>
+
+**Example:**
+```typescript
+const api = init();
+api.setEnabled(false); // Disable React Grab
+api.setEnabled(true);  // Enable React Grab
+```
+
+**Notes:**
+- Disabling React Grab also deactivates it if currently active
+- The enabled state persists in toolbar state
+
+---
+
+### getToolbarState()
+
+Gets the current toolbar state.
+
+```typescript
+api.getToolbarState(): ToolbarState | null
+```
+
+**Returns:**
+```typescript
+interface ToolbarState {
+  edge: 'top' | 'bottom' | 'left' | 'right';
+  ratio: number; // 0-1, position along the edge
+  collapsed: boolean;
+  enabled: boolean;
+}
+```
+
+**Example:**
+```typescript
+const api = init();
+const state = api.getToolbarState();
+console.log(`Toolbar is on ${state?.edge} edge`);
+```
+
+---
+
+### setToolbarState()
+
+Updates the toolbar state.
+
+```typescript
+api.setToolbarState(state: Partial<ToolbarState>): void
+```
+
+<ParamField path="state" type="Partial<ToolbarState>" required>
+  Partial toolbar state to update
+</ParamField>
+
+**Example:**
+```typescript
+const api = init();
+api.setToolbarState({
+  edge: 'top',
+  collapsed: true
+});
+```
+
+**Notes:**
+- Only provided properties are updated
+- Changes are saved to localStorage
+- Triggers toolbar state change callbacks
+
+---
+
+### onToolbarStateChange()
+
+Subscribes to toolbar state changes.
+
+```typescript
+api.onToolbarStateChange(callback: (state: ToolbarState) => void): () => void
+```
+
+<ParamField path="callback" type="(state: ToolbarState) => void" required>
+  Function to call when toolbar state changes
+</ParamField>
+
+**Returns:**
+- Unsubscribe function
+
+**Example:**
+```typescript
+const api = init();
+const unsubscribe = api.onToolbarStateChange((state) => {
+  console.log('Toolbar state changed:', state);
+});
+
+// Later: unsubscribe()
+```
+
+---
+
+### dispose()
+
+Cleans up all React Grab resources, event listeners, and state.
+
+```typescript
+api.dispose(): void
+```
+
+**Example:**
+```typescript
+const api = init();
+// ... use React Grab ...
+api.dispose(); // Clean up when done
+```
+
+**Notes:**
+- Removes all event listeners
+- Clears all timers and intervals
+- Removes overlay elements from DOM
+- After calling dispose(), a new `init()` call will work
+
+---
+
+### copyElement()
+
+Programmatically copies one or more elements.
+
+```typescript
+api.copyElement(elements: Element | Element[]): Promise<boolean>
+```
+
+<ParamField path="elements" type="Element | Element[]" required>
+  Element or array of elements to copy
+</ParamField>
+
+**Returns:**
+- `Promise<boolean>` - Resolves to `true` if copy succeeded, `false` otherwise
+
+**Example:**
+```typescript
+const api = init();
+const button = document.querySelector('button');
+if (button) {
+  const success = await api.copyElement(button);
+  console.log(success ? 'Copied!' : 'Failed');
+}
+```
+
+**Example - Multiple Elements:**
+```typescript
+const api = init();
+const items = Array.from(document.querySelectorAll('.item'));
+const success = await api.copyElement(items);
+```
+
+---
+
+### getSource()
+
+Gets source information for an element.
+
+```typescript
+api.getSource(element: Element): Promise<SourceInfo | null>
+```
+
+<ParamField path="element" type="Element" required>
+  The element to get source info for
+</ParamField>
+
+**Returns:**
+```typescript
+interface SourceInfo {
+  filePath: string;
+  lineNumber: number | null;
+  componentName: string | null;
+}
+```
+
+**Example:**
+```typescript
+const api = init();
+const button = document.querySelector('button');
+if (button) {
+  const source = await api.getSource(button);
+  if (source) {
+    console.log(`Component: ${source.componentName}`);
+    console.log(`File: ${source.filePath}:${source.lineNumber}`);
+  }
+}
+```
+
+**Notes:**
+- Returns `null` if source information cannot be determined
+- Requires React DevTools fiber information to be available
+
+---
+
+### getStackContext()
+
+Gets the stack context for an element.
+
+```typescript
+api.getStackContext(element: Element): Promise<string>
+```
+
+<ParamField path="element" type="Element" required>
+  The element to get stack context for
+</ParamField>
+
+**Returns:**
+- `Promise<string>` - A formatted string with the element's component stack
+
+**Example:**
+```typescript
+const api = init();
+const div = document.querySelector('.container');
+if (div) {
+  const context = await api.getStackContext(div);
+  console.log(context);
+  // Output: "App > Layout > Container > div"
+}
+```
+
+---
+
+### getState()
+
+Gets the current React Grab state.
+
+```typescript
+api.getState(): ReactGrabState
+```
+
+**Returns:**
+```typescript
+interface ReactGrabState {
+  isActive: boolean;
+  isDragging: boolean;
+  isCopying: boolean;
+  isPromptMode: boolean;
+  isCrosshairVisible: boolean;
+  isSelectionBoxVisible: boolean;
+  isDragBoxVisible: boolean;
+  targetElement: Element | null;
+  dragBounds: DragRect | null;
+  grabbedBoxes: Array<{
+    id: string;
+    bounds: OverlayBounds;
+    createdAt: number;
+  }>;
+  labelInstances: Array<{
+    id: string;
+    status: SelectionLabelStatus;
+    tagName: string;
+    componentName?: string;
+    createdAt: number;
+  }>;
+  selectionFilePath: string | null;
+  toolbarState: ToolbarState | null;
+}
+```
+
+**Example:**
+```typescript
+const api = init();
+const state = api.getState();
+if (state.isActive && state.targetElement) {
+  console.log('Currently hovering:', state.targetElement);
+}
+```
+
+---
+
+### setOptions()
+
+Updates React Grab options after initialization.
+
+```typescript
+api.setOptions(options: SettableOptions): void
+```
+
+<ParamField path="options" type="SettableOptions" required>
+  Options to update. Same as Options but without the `enabled` property.
+</ParamField>
+
+**Example:**
+```typescript
+const api = init();
+api.setOptions({
+  activationMode: 'hold',
+  keyHoldDuration: 300,
+  maxContextLines: 5
+});
+```
+
+**Notes:**
+- Cannot change the `enabled` option - use `setEnabled()` instead
+- Changes take effect immediately
+- Affects all registered plugins
+
+---
+
+### registerPlugin()
+
+Registers a new plugin with React Grab.
+
+```typescript
+api.registerPlugin(plugin: Plugin): void
+```
+
+<ParamField path="plugin" type="Plugin" required>
+  The plugin to register
+</ParamField>
+
+**Example:**
+```typescript
+import { init } from 'react-grab';
+
+const api = init();
+
+api.registerPlugin({
+  name: 'my-plugin',
+  setup: (api, hooks) => {
+    return {
+      actions: [{
+        id: 'custom-action',
+        label: 'Custom Action',
+        target: 'context-menu',
+        onAction: (context) => {
+          console.log('Custom action!', context.element);
+        }
+      }]
+    };
+  }
+});
+```
+
+**Notes:**
+- Plugins can add custom actions, hooks, and theme overrides
+- See [Plugin API](/advanced/plugins) for details
+
+---
+
+### unregisterPlugin()
+
+Unregisters a plugin by name.
+
+```typescript
+api.unregisterPlugin(name: string): void
+```
+
+<ParamField path="name" type="string" required>
+  The name of the plugin to unregister
+</ParamField>
+
+**Example:**
+```typescript
+const api = init();
+api.unregisterPlugin('my-plugin');
+```
+
+**Notes:**
+- Built-in plugins cannot be unregistered
+- Plugin cleanup methods are called automatically
+
+---
+
+### getPlugins()
+
+Gets a list of registered plugin names.
+
+```typescript
+api.getPlugins(): string[]
+```
+
+**Returns:**
+- `string[]` - Array of plugin names
+
+**Example:**
+```typescript
+const api = init();
+const plugins = api.getPlugins();
+console.log('Registered plugins:', plugins);
+// Output: ['copy', 'comment', 'copyHtml', 'copyStyles', 'open', 'my-plugin']
+```
+
+---
+
+### getDisplayName()
+
+Gets the display name (component name or tag name) for an element.
+
+```typescript
+api.getDisplayName(element: Element): string | null
+```
+
+<ParamField path="element" type="Element" required>
+  The element to get the display name for
+</ParamField>
+
+**Returns:**
+- Component name if available (e.g., `'Button'`, `'MyComponent'`)
+- Tag name if no component name found (e.g., `'div'`, `'button'`)
+- `null` if neither can be determined
+
+**Example:**
+```typescript
+const api = init();
+const button = document.querySelector('button');
+if (button) {
+  const name = api.getDisplayName(button);
+  console.log('Display name:', name);
+  // Output: "Button" or "button"
+}
+```
+
+## Usage Example
+
+Here's a comprehensive example using multiple API methods:
+
+```typescript
+import { init } from 'react-grab';
+
+// Initialize with custom options
+const api = init({
+  activationMode: 'toggle',
+  maxContextLines: 5
+});
+
+// Subscribe to state changes
+const unsubscribe = api.onToolbarStateChange((state) => {
+  console.log('Toolbar moved to:', state.edge);
+});
+
+// Programmatically copy an element
+const copyButton = async () => {
+  const button = document.querySelector('.my-button');
+  if (button) {
+    const success = await api.copyElement(button);
+    if (success) {
+      const source = await api.getSource(button);
+      console.log('Copied from:', source?.filePath);
+    }
+  }
+};
+
+// Check state
+const checkState = () => {
+  const state = api.getState();
+  console.log('Active:', state.isActive);
+  console.log('Target:', api.getDisplayName(state.targetElement));
+};
+
+// Cleanup when done
+window.addEventListener('beforeunload', () => {
+  unsubscribe();
+  api.dispose();
+});
+```

@@ -1,0 +1,310 @@
+---
+title: Theming System
+description: Customize React Grab's visual appearance with themes and color schemes
+---
+
+## Overview
+
+React Grab's theming system allows you to customize the visual appearance of the overlay, selection boxes, labels, and other UI elements. The theme uses an HSL color space with a configurable base hue for consistent color generation.
+
+## Theme Interface
+
+The `Theme` interface defines all customizable visual elements:
+
+<ParamField path="enabled" type="boolean" default="true">
+  Globally toggle the entire overlay. When `false`, React Grab functionality is disabled but the API remains available.
+</ParamField>
+
+<ParamField path="hue" type="number" default="0">
+  Base hue (0-360) used to generate colors throughout the interface using HSL color space.
+  
+  Examples:
+  - `0` - Red
+  - `120` - Green
+  - `240` - Blue
+  - `280` - Purple
+</ParamField>
+
+### Selection Box
+
+<ParamField path="selectionBox" type="object">
+  The highlight box that appears when hovering over an element before selecting it.
+  
+  <Expandable title="Properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the selection highlight
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Drag Box
+
+<ParamField path="dragBox" type="object">
+  The rectangular selection area that appears when clicking and dragging to select multiple elements.
+  
+  <Expandable title="Properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the drag selection box
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Grabbed Boxes
+
+<ParamField path="grabbedBoxes" type="object">
+  Brief flash/highlight boxes that appear on elements immediately after they're successfully grabbed/copied.
+  
+  <Expandable title="Properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show these success flash effects
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Element Label
+
+<ParamField path="elementLabel" type="object">
+  The floating label that follows the cursor showing information about the currently hovered element.
+  
+  <Expandable title="Properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the label
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Crosshair
+
+<ParamField path="crosshair" type="object">
+  The crosshair cursor overlay that helps with precise element targeting.
+  
+  <Expandable title="Properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the crosshair
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Toolbar
+
+<ParamField path="toolbar" type="object">
+  The floating toolbar that allows toggling React Grab activation.
+  
+  <Expandable title="Properties">
+    <ParamField path="enabled" type="boolean" default="true">
+      Whether to show the toolbar
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Applying Themes
+
+### Via Plugin
+
+The recommended way to apply themes is through a plugin:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+const darkThemePlugin: Plugin = {
+  name: "dark-theme",
+  theme: {
+    hue: 240, // Blue base color
+    selectionBox: {
+      enabled: true,
+    },
+    crosshair: {
+      enabled: false, // Disable crosshair
+    },
+  },
+};
+
+window.__REACT_GRAB__.registerPlugin(darkThemePlugin);
+```
+
+### Via Init Options
+
+You can also pass theme options when initializing React Grab:
+
+```typescript
+import { init } from "react-grab";
+
+const api = init({
+  theme: {
+    hue: 120, // Green base color
+    grabbedBoxes: {
+      enabled: true,
+    },
+  },
+});
+```
+
+### Dynamic Theme Updates
+
+Themes can be updated dynamically through plugins:
+
+```typescript
+const themePlugin: Plugin = {
+  name: "dynamic-theme",
+  setup: (api) => {
+    // Update theme based on system preference
+    const updateTheme = () => {
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      
+      return {
+        theme: {
+          hue: isDark ? 240 : 0,
+        },
+      };
+    };
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", () => {
+      // Re-register plugin with updated theme
+      api.unregisterPlugin("dynamic-theme");
+      api.registerPlugin(themePlugin);
+    });
+
+    return updateTheme();
+  },
+};
+```
+
+## DeepPartial Type
+
+React Grab uses a `DeepPartial` type for theme overrides, allowing you to specify only the properties you want to change:
+
+```typescript
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object
+    ? T[P] extends (...args: unknown[]) => unknown
+      ? T[P]
+      : DeepPartial<T[P]>
+    : T[P];
+};
+```
+
+This means you can provide partial theme objects without specifying every property:
+
+```typescript
+// Valid - only override specific properties
+const theme: DeepPartial<Theme> = {
+  hue: 280,
+  selectionBox: {
+    enabled: true,
+  },
+};
+```
+
+## Theme Examples
+
+### Minimal Theme
+
+Disable all visual indicators except the selection box:
+
+```typescript
+const minimalTheme: Plugin = {
+  name: "minimal",
+  theme: {
+    crosshair: { enabled: false },
+    elementLabel: { enabled: false },
+    grabbedBoxes: { enabled: false },
+    dragBox: { enabled: true },
+    selectionBox: { enabled: true },
+  },
+};
+```
+
+### High Contrast Theme
+
+Use a bright color for better visibility:
+
+```typescript
+const highContrastTheme: Plugin = {
+  name: "high-contrast",
+  theme: {
+    hue: 60, // Yellow
+  },
+};
+```
+
+### Brand Color Theme
+
+Match your brand colors:
+
+```typescript
+const brandTheme: Plugin = {
+  name: "brand",
+  theme: {
+    hue: 340, // Pink/magenta for brand
+    toolbar: { enabled: true },
+  },
+};
+```
+
+### Stealth Mode
+
+Minimize visual distraction:
+
+```typescript
+const stealthTheme: Plugin = {
+  name: "stealth",
+  theme: {
+    crosshair: { enabled: false },
+    grabbedBoxes: { enabled: false },
+    elementLabel: { enabled: true },
+    selectionBox: { enabled: true },
+  },
+};
+```
+
+## Color System
+
+The `hue` value determines the base color using the HSL color model:
+
+| Hue Range | Color |
+|-----------|-------|
+| 0-30 | Red |
+| 30-60 | Orange |
+| 60-120 | Yellow/Green |
+| 120-180 | Green |
+| 180-240 | Cyan/Blue |
+| 240-280 | Blue |
+| 280-330 | Purple/Magenta |
+| 330-360 | Pink/Red |
+
+The saturation and lightness are automatically calculated to ensure good contrast and readability.
+
+## Multiple Theme Plugins
+
+You can register multiple plugins with theme overrides. Themes are merged in the order plugins are registered:
+
+```typescript
+// First plugin sets base hue
+api.registerPlugin({
+  name: "base-theme",
+  theme: { hue: 240 },
+});
+
+// Second plugin disables crosshair
+api.registerPlugin({
+  name: "no-crosshair",
+  theme: { crosshair: { enabled: false } },
+});
+
+// Final theme will have hue: 240 and crosshair disabled
+```
+
+## Best Practices
+
+1. **Use Named Plugins**: Give theme plugins descriptive names for easier debugging
+2. **Partial Updates**: Only override the properties you need to change
+3. **Consistent Hues**: Stick to a single hue value for visual consistency
+4. **Test Visibility**: Ensure your theme provides sufficient contrast on your application's background
+5. **Consider Accessibility**: High contrast themes help users with visual impairments
+
+## See Also
+
+- [Plugins](/advanced/plugins) - Plugin system overview
+- [Custom Actions](/advanced/custom-actions) - Adding custom functionality
+- [API Reference](/api/init) - Initialization options

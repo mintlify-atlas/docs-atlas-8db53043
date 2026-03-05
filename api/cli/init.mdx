@@ -1,0 +1,283 @@
+---
+title: grab init
+description: Initialize React Grab in your project with automatic framework detection
+---
+
+## Overview
+
+The `grab init` command automatically detects your framework and installs React Grab in your project. It supports Next.js, Vite, TanStack Start, and Webpack projects.
+
+## Usage
+
+```bash
+npx -y grab@latest init
+```
+
+## Options
+
+| Option | Alias | Description | Default |
+|--------|-------|-------------|----------|
+| `--yes` | `-y` | Skip confirmation prompts | `false` |
+| `--force` | `-f` | Force overwrite existing config | `false` |
+| `--agent <agent>` | `-a` | Connect to your agent (cursor, claude, copilot, windsurf, mcp) | - |
+| `--key <key>` | `-k` | Activation key (e.g., Meta+K, Ctrl+Shift+G, Space) | - |
+| `--skip-install` | - | Skip package installation | `false` |
+| `--pkg <pkg>` | - | Custom package URL for CLI | `grab` |
+| `--cwd <cwd>` | `-c` | Working directory | Current directory |
+
+## Examples
+
+### Basic Installation
+
+<Steps>
+  <Step title="Run init command">
+    Navigate to your project root and run:
+
+    ```bash
+    npx -y grab@latest init
+    ```
+  </Step>
+
+  <Step title="Review changes">
+    The CLI will show a diff of changes to your files:
+
+    ```diff
+    --- app/layout.tsx
+    +++ app/layout.tsx
+    @@ -1,6 +1,14 @@
+    +import Script from "next/script";
+    +
+     export default function RootLayout({ children }) {
+       return (
+         <html>
+    +      <head>
+    +        {process.env.NODE_ENV === "development" && (
+    +          <Script src="//unpkg.com/react-grab/dist/index.global.js" />
+    +        )}
+    +      </head>
+           <body>{children}</body>
+         </html>
+       );
+    ```
+  </Step>
+
+  <Step title="Apply changes">
+    Confirm to apply the changes when prompted:
+
+    ```
+    ? Apply these changes? (Y/n)
+    ```
+  </Step>
+
+  <Step title="Start development server">
+    React Grab is now installed. Start your development server:
+
+    ```bash
+    npm run dev
+    ```
+  </Step>
+</Steps>
+
+### Non-Interactive Mode
+
+Skip all prompts with the `--yes` flag:
+
+```bash
+npx -y grab@latest init --yes
+```
+
+### Install with Agent Integration
+
+Connect to your coding agent during installation:
+
+<CodeGroup>
+
+```bash Cursor
+npx -y grab@latest init --agent cursor
+```
+
+```bash Claude
+npx -y grab@latest init --agent claude
+```
+
+```bash GitHub Copilot
+npx -y grab@latest init --agent copilot
+```
+
+```bash Windsurf
+npx -y grab@latest init --agent windsurf
+```
+
+```bash MCP Server
+npx -y grab@latest init --agent mcp
+```
+
+</CodeGroup>
+
+### Custom Activation Key
+
+Set a custom keyboard shortcut:
+
+<CodeGroup>
+
+```bash Meta+K (Cmd+K on Mac, Win+K on Windows)
+npx -y grab@latest init --key "Meta+K"
+```
+
+```bash Ctrl+Shift+G
+npx -y grab@latest init --key "Ctrl+Shift+G"
+```
+
+```bash Space
+npx -y grab@latest init --key "Space"
+```
+
+```bash Single key
+npx -y grab@latest init --key "g"
+```
+
+</CodeGroup>
+
+### Specify Working Directory
+
+Install in a specific project directory:
+
+```bash
+npx -y grab@latest init --cwd ./packages/frontend
+```
+
+### Force Reinstall
+
+Overwrite existing React Grab configuration:
+
+```bash
+npx -y grab@latest init --force
+```
+
+## Supported Frameworks
+
+React Grab automatically detects and supports:
+
+- **Next.js** — Both App Router and Pages Router
+- **Vite** — React + Vite projects
+- **TanStack Start** — TanStack Start applications
+- **Webpack** — Custom Webpack configurations
+
+### Framework Detection
+
+The CLI detects your framework by analyzing:
+
+1. Package dependencies in `package.json`
+2. Configuration files (`next.config.ts`, `vite.config.ts`, etc.)
+3. Project structure and file locations
+
+### Monorepo Support
+
+For monorepos, React Grab will:
+
+1. Scan for all React projects in the workspace
+2. Prompt you to select a project
+3. Install React Grab in the selected project
+
+Specify a project directly with `--cwd`:
+
+```bash
+npx -y grab@latest init --cwd apps/web
+```
+
+## Output Example
+
+```bash
+$ npx -y grab@latest init
+✿ React Grab 0.0.1
+
+✔ Preflight checks.
+✔ Verifying framework. Found Next.js.
+✔ Detecting router type. Found App Router.
+✔ Detecting package manager. Found pnpm.
+
+? Would you like to connect it to your agent? (y/N)
+
+--- app/layout.tsx
++++ app/layout.tsx
+@@ -1,6 +1,14 @@
++import Script from "next/script";
++
+ export default function RootLayout({ children }) {
+   return (
+     <html>
++      <head>
++        {process.env.NODE_ENV === "development" && (
++          <Script src="//unpkg.com/react-grab/dist/index.global.js" />
++        )}
++      </head>
+       <body>{children}</body>
+     </html>
+   );
+
+? Apply these changes? (Y/n)
+
+✔ Installing react-grab.
+✔ Applying changes to app/layout.tsx.
+
+Success! React Grab has been installed.
+You may now start your development server.
+```
+
+## Troubleshooting
+
+### Framework Not Detected
+
+If the CLI cannot detect your framework:
+
+```
+✖ Verifying framework. Could not detect a supported framework.
+
+React Grab supports Next.js, Vite, TanStack Start, and Webpack projects.
+Visit https://github.com/aidenybai/react-grab for manual setup.
+```
+
+Solution: Follow the [manual installation guide](/installation#manual-installation).
+
+### Multiple Projects Found
+
+For monorepos with multiple projects:
+
+```
+Found the following projects:
+
+  frontend (Next.js) apps/frontend
+  admin (Vite) apps/admin
+  marketing (Next.js) apps/marketing
+
+Re-run with -c <path> to specify a project:
+
+  $ npx -y grab@latest init -c apps/frontend
+```
+
+Solution: Specify the project with `--cwd`.
+
+### Already Installed
+
+If React Grab is already installed:
+
+```
+✔ Preflight checks.
+
+✔ React Grab is already installed.
+
+Currently installed agents: Cursor
+
+? Would you like to customize options?
+```
+
+Options:
+- Use `--force` to reconfigure
+- Run `grab configure` to change options
+- Run `grab add` to add agent integrations
+
+## Related Commands
+
+- [`grab add`](/api/cli/add) — Connect React Grab to your coding agent
+- [`grab configure`](/api/cli/configure) — Configure React Grab options
+- [`grab remove`](/api/cli/remove) — Disconnect agent integrations

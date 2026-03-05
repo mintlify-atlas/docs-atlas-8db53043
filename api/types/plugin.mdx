@@ -1,0 +1,324 @@
+---
+title: 'Plugin Types'
+description: 'Plugin, PluginConfig, and PluginHooks interfaces for extending React Grab'
+---
+
+## Plugin
+
+The main interface for creating React Grab plugins. Plugins can extend functionality, customize appearance, add actions, and hook into lifecycle events.
+
+### Properties
+
+<ParamField path="name" type="string" required>
+  Unique identifier for the plugin. Used for registration and unregistration.
+</ParamField>
+
+<ParamField path="theme" type="DeepPartial<Theme>">
+  Theme customizations applied when the plugin is active. See [Theme](/api/types/theme) for available options.
+</ParamField>
+
+<ParamField path="options" type="SettableOptions">
+  Configuration options that modify React Grab behavior. See [Options](/api/options).
+</ParamField>
+
+<ParamField path="actions" type="PluginAction[]">
+  Custom actions to add to context menus or toolbar. Array of [ContextMenuAction](/api/types/actions#contextmenuaction) or [ToolbarMenuAction](/api/types/actions#toolbarmenuaction).
+</ParamField>
+
+<ParamField path="hooks" type="PluginHooks">
+  Lifecycle hooks and event handlers. See [PluginHooks](#pluginhooks) below.
+</ParamField>
+
+<ParamField path="setup" type="(api: ReactGrabAPI, hooks: ActionContextHooks) => PluginConfig | void">
+  Optional setup function called when the plugin is registered. Receives the React Grab API and action hooks. Can return a `PluginConfig` object for dynamic configuration.
+</ParamField>
+
+## PluginConfig
+
+Configuration object returned by the plugin's `setup` function or used for runtime configuration.
+
+### Properties
+
+<ParamField path="theme" type="DeepPartial<Theme>">
+  Theme customizations to apply.
+</ParamField>
+
+<ParamField path="options" type="SettableOptions">
+  Runtime options to apply.
+</ParamField>
+
+<ParamField path="actions" type="PluginAction[]">
+  Actions to register.
+</ParamField>
+
+<ParamField path="hooks" type="PluginHooks">
+  Event hooks to register.
+</ParamField>
+
+<ParamField path="cleanup" type="() => void">
+  Optional cleanup function called when the plugin is unregistered or when React Grab is disposed.
+</ParamField>
+
+## PluginHooks
+
+Lifecycle hooks and event handlers for plugins. All hooks are optional.
+
+### Activation Hooks
+
+<ParamField path="onActivate" type="() => void">
+  Called when React Grab is activated (enters selection mode).
+</ParamField>
+
+<ParamField path="onDeactivate" type="() => void">
+  Called when React Grab is deactivated (exits selection mode).
+</ParamField>
+
+<ParamField path="cancelPendingToolbarActions" type="() => void">
+  Called to cancel any pending toolbar actions. Useful for cleanup.
+</ParamField>
+
+### Element Interaction Hooks
+
+<ParamField path="onElementHover" type="(element: Element) => void">
+  Called when the user hovers over an element during selection.
+</ParamField>
+
+<ParamField path="onElementSelect" type="(element: Element) => boolean | void | Promise<boolean>">
+  Called when an element is selected. Return `false` to prevent the default selection behavior.
+</ParamField>
+
+<ParamField path="onDragStart" type="(startX: number, startY: number) => void">
+  Called when the user starts dragging to select multiple elements. Receives starting coordinates.
+</ParamField>
+
+<ParamField path="onDragEnd" type="(elements: Element[], bounds: DragRect) => void">
+  Called when drag selection ends. Receives selected elements and drag bounds.
+</ParamField>
+
+### Copy Hooks
+
+<ParamField path="onBeforeCopy" type="(elements: Element[]) => void | Promise<void>">
+  Called before copying elements to clipboard. Use for validation or preparation.
+</ParamField>
+
+<ParamField path="transformCopyContent" type="(content: string, elements: Element[]) => string | Promise<string>">
+  Transform the content before copying to clipboard. Return modified content string.
+</ParamField>
+
+<ParamField path="onAfterCopy" type="(elements: Element[], success: boolean) => void">
+  Called after copy operation completes, regardless of success.
+</ParamField>
+
+<ParamField path="onCopySuccess" type="(elements: Element[], content: string) => void">
+  Called when copy succeeds. Receives elements and copied content.
+</ParamField>
+
+<ParamField path="onCopyError" type="(error: Error) => void">
+  Called when copy fails. Receives the error.
+</ParamField>
+
+### State & UI Hooks
+
+<ParamField path="onStateChange" type="(state: ReactGrabState) => void">
+  Called whenever React Grab state changes. Receives the new state.
+</ParamField>
+
+<ParamField path="onPromptModeChange" type="(isPromptMode: boolean, context: PromptModeContext) => void">
+  Called when prompt mode is toggled. Receives mode state and context with cursor position and target element.
+</ParamField>
+
+<ParamField path="onSelectionBox" type="(visible: boolean, bounds: OverlayBounds | null, element: Element | null) => void">
+  Called when selection box visibility or bounds change.
+</ParamField>
+
+<ParamField path="onDragBox" type="(visible: boolean, bounds: OverlayBounds | null) => void">
+  Called when drag box visibility or bounds change.
+</ParamField>
+
+<ParamField path="onGrabbedBox" type="(bounds: OverlayBounds, element: Element) => void">
+  Called when a grabbed box (success flash) is shown.
+</ParamField>
+
+<ParamField path="onElementLabel" type="(visible: boolean, variant: ElementLabelVariant, context: ElementLabelContext) => void">
+  Called when element label visibility or content changes. Variant can be "hover", "processing", or "success".
+</ParamField>
+
+<ParamField path="onCrosshair" type="(visible: boolean, context: CrosshairContext) => void">
+  Called when crosshair visibility or position changes.
+</ParamField>
+
+<ParamField path="onContextMenu" type="(element: Element, position: { x: number; y: number }) => void">
+  Called when context menu is opened. Receives target element and menu position.
+</ParamField>
+
+### File & Navigation Hooks
+
+<ParamField path="onOpenFile" type="(filePath: string, lineNumber?: number) => boolean | void">
+  Called when a file should be opened in the editor. Return `false` to prevent default behavior.
+</ParamField>
+
+<ParamField path="transformOpenFileUrl" type="(url: string, filePath: string, lineNumber?: number) => string">
+  Transform the URL used for opening files. Return modified URL.
+</ParamField>
+
+### Transform Hooks
+
+<ParamField path="transformHtmlContent" type="(html: string, elements: Element[]) => string | Promise<string>">
+  Transform HTML content before it's used. Return modified HTML string.
+</ParamField>
+
+<ParamField path="transformAgentContext" type="(context: AgentContext, elements: Element[]) => AgentContext | Promise<AgentContext>">
+  Transform agent context before sending to agent provider. Return modified context.
+</ParamField>
+
+<ParamField path="transformActionContext" type="(context: ActionContext) => ActionContext">
+  Transform action context before actions execute. Return modified context.
+</ParamField>
+
+<ParamField path="transformSnippet" type="(snippet: string, element: Element) => string | Promise<string>">
+  Transform code snippet for an element. Return modified snippet.
+</ParamField>
+
+## Usage
+
+### Basic Plugin
+
+```tsx
+import { Plugin } from 'react-grab';
+
+const myPlugin: Plugin = {
+  name: 'my-plugin',
+  theme: {
+    hue: 200
+  },
+  hooks: {
+    onActivate: () => {
+      console.log('React Grab activated');
+    },
+    onCopySuccess: (elements, content) => {
+      console.log(`Copied ${elements.length} elements`);
+    }
+  }
+};
+```
+
+### Plugin with Setup Function
+
+```tsx
+const analyticsPlugin: Plugin = {
+  name: 'analytics',
+  setup: (api, hooks) => {
+    let copyCount = 0;
+    
+    return {
+      hooks: {
+        onCopySuccess: (elements) => {
+          copyCount++;
+          console.log(`Total copies: ${copyCount}`);
+        }
+      },
+      cleanup: () => {
+        console.log(`Plugin cleanup - ${copyCount} copies made`);
+      }
+    };
+  }
+};
+```
+
+### Plugin with Transform Hooks
+
+```tsx
+const formatterPlugin: Plugin = {
+  name: 'formatter',
+  hooks: {
+    transformCopyContent: async (content, elements) => {
+      // Add custom formatting
+      const formatted = await prettify(content);
+      return `/* Grabbed ${elements.length} elements */\n${formatted}`;
+    },
+    transformSnippet: (snippet, element) => {
+      // Add metadata comment
+      const tag = element.tagName.toLowerCase();
+      return `/* <${tag}> */\n${snippet}`;
+    }
+  }
+};
+```
+
+### Plugin Registration
+
+```tsx
+import { useReactGrab } from 'react-grab';
+
+function App() {
+  const reactGrab = useReactGrab();
+  
+  useEffect(() => {
+    // Register plugin
+    reactGrab.registerPlugin(myPlugin);
+    
+    // Cleanup on unmount
+    return () => {
+      reactGrab.unregisterPlugin('my-plugin');
+    };
+  }, []);
+  
+  return <div>{/* Your app */}</div>;
+}
+```
+
+## Type Definitions
+
+```typescript
+export interface Plugin {
+  name: string;
+  theme?: DeepPartial<Theme>;
+  options?: SettableOptions;
+  actions?: PluginAction[];
+  hooks?: PluginHooks;
+  setup?: (api: ReactGrabAPI, hooks: ActionContextHooks) => PluginConfig | void;
+}
+
+export interface PluginConfig {
+  theme?: DeepPartial<Theme>;
+  options?: SettableOptions;
+  actions?: PluginAction[];
+  hooks?: PluginHooks;
+  cleanup?: () => void;
+}
+
+export interface PluginHooks {
+  onActivate?: () => void;
+  onDeactivate?: () => void;
+  cancelPendingToolbarActions?: () => void;
+  onElementHover?: (element: Element) => void;
+  onElementSelect?: (element: Element) => boolean | void | Promise<boolean>;
+  onDragStart?: (startX: number, startY: number) => void;
+  onDragEnd?: (elements: Element[], bounds: DragRect) => void;
+  onBeforeCopy?: (elements: Element[]) => void | Promise<void>;
+  transformCopyContent?: (content: string, elements: Element[]) => string | Promise<string>;
+  onAfterCopy?: (elements: Element[], success: boolean) => void;
+  onCopySuccess?: (elements: Element[], content: string) => void;
+  onCopyError?: (error: Error) => void;
+  onStateChange?: (state: ReactGrabState) => void;
+  onPromptModeChange?: (isPromptMode: boolean, context: PromptModeContext) => void;
+  onSelectionBox?: (visible: boolean, bounds: OverlayBounds | null, element: Element | null) => void;
+  onDragBox?: (visible: boolean, bounds: OverlayBounds | null) => void;
+  onGrabbedBox?: (bounds: OverlayBounds, element: Element) => void;
+  onElementLabel?: (visible: boolean, variant: ElementLabelVariant, context: ElementLabelContext) => void;
+  onCrosshair?: (visible: boolean, context: CrosshairContext) => void;
+  onContextMenu?: (element: Element, position: { x: number; y: number }) => void;
+  onOpenFile?: (filePath: string, lineNumber?: number) => boolean | void;
+  transformHtmlContent?: (html: string, elements: Element[]) => string | Promise<string>;
+  transformAgentContext?: (context: AgentContext, elements: Element[]) => AgentContext | Promise<AgentContext>;
+  transformActionContext?: (context: ActionContext) => ActionContext;
+  transformOpenFileUrl?: (url: string, filePath: string, lineNumber?: number) => string;
+  transformSnippet?: (snippet: string, element: Element) => string | Promise<string>;
+}
+```
+
+## See Also
+
+- [Actions](/api/types/actions) - Define custom actions for plugins
+- [Agent](/api/types/agent) - Configure AI agent providers
+- [Theme](/api/types/theme) - Theme customization options

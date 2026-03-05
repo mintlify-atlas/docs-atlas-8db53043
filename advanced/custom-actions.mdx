@@ -1,0 +1,391 @@
+---
+title: Custom Actions
+description: Create custom context menu and toolbar actions for React Grab
+---
+
+## Overview
+
+Actions extend React Grab with custom functionality accessible from the context menu (right-click) or toolbar dropdown. Actions can perform operations like copying specific formats, opening files, triggering AI agents, or integrating with external tools.
+
+## Action Types
+
+React Grab supports two types of actions:
+
+1. **Context Menu Actions** - Appear in the right-click context menu when selecting elements
+2. **Toolbar Menu Actions** - Appear in the toolbar dropdown menu
+
+## ContextMenuAction Interface
+
+Context menu actions appear when right-clicking on selected elements:
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the action
+</ParamField>
+
+<ParamField path="label" type="string" required>
+  Display label shown in the context menu
+</ParamField>
+
+<ParamField path="target" type="'context-menu'">
+  Set to `"context-menu"` or omit for context menu actions
+</ParamField>
+
+<ParamField path="shortcut" type="string">
+  Keyboard shortcut (single character) to trigger the action. Example: `"C"` for copy, `"O"` for open.
+</ParamField>
+
+<ParamField path="enabled" type="boolean | ((context: ActionContext) => boolean)">
+  Whether the action is enabled. Can be a boolean or a function that receives the action context.
+  
+  Example:
+  ```typescript
+  enabled: (context) => Boolean(context.filePath)
+  ```
+</ParamField>
+
+<ParamField path="onAction" type="(context: ContextMenuActionContext) => void | Promise<void>" required>
+  Callback function executed when the action is triggered.
+  
+  <Expandable title="Context Properties">
+    <ParamField path="element" type="Element">
+      The primary selected element
+    </ParamField>
+    
+    <ParamField path="elements" type="Element[]">
+      Array of all selected elements (for multi-selection)
+    </ParamField>
+    
+    <ParamField path="filePath" type="string | undefined">
+      Source file path of the element (if available)
+    </ParamField>
+    
+    <ParamField path="lineNumber" type="number | undefined">
+      Line number in the source file
+    </ParamField>
+    
+    <ParamField path="componentName" type="string | undefined">
+      React component name
+    </ParamField>
+    
+    <ParamField path="tagName" type="string | undefined">
+      HTML tag name
+    </ParamField>
+    
+    <ParamField path="copy" type="() => void">
+      Function to trigger the default copy action
+    </ParamField>
+    
+    <ParamField path="enterPromptMode" type="(agent?: AgentOptions) => void">
+      Function to enter prompt mode with optional agent configuration
+    </ParamField>
+    
+    <ParamField path="hideContextMenu" type="() => void">
+      Function to hide the context menu
+    </ParamField>
+    
+    <ParamField path="cleanup" type="() => void">
+      Function to clean up and deactivate React Grab
+    </ParamField>
+    
+    <ParamField path="performWithFeedback" type="(action: () => Promise<boolean>) => Promise<void>">
+      Execute an action with visual feedback (loading/success/error states)
+    </ParamField>
+    
+    <ParamField path="hooks" type="ActionContextHooks">
+      <Expandable title="Hook Functions">
+        <ParamField path="transformHtmlContent" type="(html: string, elements: Element[]) => Promise<string>">
+          Transform HTML content before use
+        </ParamField>
+        
+        <ParamField path="onOpenFile" type="(filePath: string, lineNumber?: number) => boolean | void">
+          Handle file opening, return true to prevent default
+        </ParamField>
+        
+        <ParamField path="transformOpenFileUrl" type="(url: string, filePath: string, lineNumber?: number) => string">
+          Transform the file URL before opening
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="agent" type="AgentOptions">
+  Optional AI agent configuration for this action. See [Agent Providers](/advanced/agent-providers) for details.
+</ParamField>
+
+## ToolbarMenuAction Interface
+
+Toolbar actions appear in the toolbar dropdown menu:
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the action
+</ParamField>
+
+<ParamField path="label" type="string" required>
+  Display label shown in the toolbar menu
+</ParamField>
+
+<ParamField path="target" type="'toolbar'" required>
+  Must be set to `"toolbar"` for toolbar actions
+</ParamField>
+
+<ParamField path="shortcut" type="string">
+  Keyboard shortcut hint (not actively bound, just displayed)
+</ParamField>
+
+<ParamField path="enabled" type="boolean | (() => boolean)">
+  Whether the action is enabled
+</ParamField>
+
+<ParamField path="isActive" type="() => boolean">
+  Function to determine if the action is currently active (shown with a checkmark)
+</ParamField>
+
+<ParamField path="onAction" type="() => void | Promise<void>" required>
+  Callback function executed when the action is triggered
+</ParamField>
+
+## Creating Context Menu Actions
+
+### Basic Action
+
+A simple action that logs element information:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+const inspectPlugin: Plugin = {
+  name: "inspect",
+  actions: [
+    {
+      id: "inspect",
+      label: "Inspect",
+      shortcut: "I",
+      onAction: (context) => {
+        console.log("Element:", context.element);
+        console.log("Tag:", context.tagName);
+        console.log("Component:", context.componentName);
+        console.log("File:", context.filePath, context.lineNumber);
+        context.hideContextMenu();
+      },
+    },
+  ],
+};
+```
+
+### Conditional Action
+
+An action that's only enabled when file path is available:
+
+```typescript
+const openAction: ContextMenuAction = {
+  id: "open",
+  label: "Open in Editor",
+  shortcut: "O",
+  enabled: (context) => Boolean(context.filePath),
+  onAction: (context) => {
+    if (!context.filePath) return;
+    
+    // Open file in editor
+    const url = `vscode://file${context.filePath}:${context.lineNumber || 1}`;
+    window.open(url, "_blank");
+    
+    context.hideContextMenu();
+    context.cleanup();
+  },
+};
+```
+
+### Action with Feedback
+
+Use `performWithFeedback` for operations that take time:
+
+```typescript
+const copyJsonAction: ContextMenuAction = {
+  id: "copy-json",
+  label: "Copy as JSON",
+  shortcut: "J",
+  onAction: async (context) => {
+    await context.performWithFeedback(async () => {
+      // Extract element data
+      const data = {
+        tagName: context.tagName,
+        component: context.componentName,
+        attributes: Array.from(context.element.attributes).map(attr => ({
+          name: attr.name,
+          value: attr.value,
+        })),
+      };
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      
+      return true; // Success
+    });
+  },
+};
+```
+
+## Creating Toolbar Actions
+
+### Toggle Action
+
+A toolbar action that toggles a state:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+const freezePlugin: Plugin = {
+  name: "freeze",
+  setup: (api) => {
+    let isFrozen = false;
+    
+    return {
+      actions: [
+        {
+          id: "toggle-freeze",
+          label: "Freeze UI",
+          target: "toolbar",
+          shortcut: "F",
+          isActive: () => isFrozen,
+          onAction: () => {
+            isFrozen = !isFrozen;
+            api.setOptions({
+              freezeReactUpdates: isFrozen,
+            });
+          },
+        },
+      ],
+    };
+  },
+};
+```
+
+### Action with Selection
+
+Toolbar action that activates React Grab and waits for element selection:
+
+```typescript
+const copyHtmlToolbarAction: ToolbarMenuAction = {
+  id: "copy-html-toolbar",
+  label: "Copy HTML",
+  target: "toolbar",
+  onAction: () => {
+    // This pattern is used by built-in plugins
+    isPendingSelection = true;
+    api.activate();
+    
+    // Then in the plugin hooks:
+    // onElementSelect: (element) => {
+    //   if (!isPendingSelection) return;
+    //   isPendingSelection = false;
+    //   // Perform action with element
+    //   return true; // Prevent default
+    // }
+  },
+};
+```
+
+## Complete Action Plugin Example
+
+Here's a complete plugin with both context menu and toolbar actions:
+
+```typescript
+import type { Plugin } from "react-grab";
+
+const devToolsPlugin: Plugin = {
+  name: "dev-tools",
+  setup: (api) => {
+    let isPendingScreenshot = false;
+    
+    return {
+      hooks: {
+        onElementSelect: async (element) => {
+          if (!isPendingScreenshot) return;
+          isPendingScreenshot = false;
+          
+          // Take screenshot of element
+          const canvas = await html2canvas(element);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              navigator.clipboard.write([
+                new ClipboardItem({ "image/png": blob }),
+              ]);
+            }
+          });
+          
+          return true;
+        },
+        onDeactivate: () => {
+          isPendingScreenshot = false;
+        },
+      },
+      actions: [
+        // Context menu actions
+        {
+          id: "copy-selector",
+          label: "Copy CSS Selector",
+          shortcut: "S",
+          onAction: async (context) => {
+            const selector = getCssSelector(context.element);
+            await navigator.clipboard.writeText(selector);
+            context.hideContextMenu();
+          },
+        },
+        {
+          id: "copy-xpath",
+          label: "Copy XPath",
+          shortcut: "X",
+          onAction: async (context) => {
+            const xpath = getXPath(context.element);
+            await navigator.clipboard.writeText(xpath);
+            context.hideContextMenu();
+          },
+        },
+        // Toolbar actions
+        {
+          id: "screenshot",
+          label: "Screenshot Element",
+          target: "toolbar",
+          onAction: () => {
+            isPendingScreenshot = true;
+            api.activate();
+          },
+        },
+        {
+          id: "log-state",
+          label: "Log React Grab State",
+          target: "toolbar",
+          onAction: () => {
+            console.log(api.getState());
+          },
+        },
+      ],
+    };
+  },
+};
+```
+
+## Action Best Practices
+
+1. **Unique IDs**: Use descriptive, unique action IDs to avoid conflicts
+2. **Hide Menu**: Always call `context.hideContextMenu()` after completing context menu actions
+3. **Cleanup**: Call `context.cleanup()` when deactivating React Grab
+4. **Feedback**: Use `performWithFeedback` for async operations to show loading states
+5. **Shortcuts**: Use single-character shortcuts that don't conflict with built-in actions
+6. **Conditional Enable**: Use the `enabled` function to disable actions when not applicable
+7. **Error Handling**: Wrap async operations in try/catch blocks
+
+## Built-in Action Shortcuts
+
+Avoid conflicting with these built-in shortcuts:
+
+- **C** - Copy
+- **O** - Open in editor
+- **Enter** - Comment/prompt mode
+
+## See Also
+
+- [Plugins](/advanced/plugins) - Plugin system overview
+- [Agent Providers](/advanced/agent-providers) - AI agent integration
+- [API Reference](/api-reference/react-grab-api) - ReactGrabAPI methods

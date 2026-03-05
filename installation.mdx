@@ -1,0 +1,319 @@
+---
+title: Installation
+description: Detailed installation guide for React Grab
+---
+
+# Installation
+
+React Grab can be installed automatically using the CLI or manually for more control.
+
+## Automatic Installation (Recommended)
+
+The easiest way to install React Grab is using the CLI tool:
+
+```bash
+npx -y grab@latest init
+```
+
+<Note>
+Run this command from your project root directory (where `next.config.ts` or `vite.config.ts` is located).
+</Note>
+
+### What the CLI Does
+
+The initialization command automatically:
+
+1. **Detects your framework** - Identifies Next.js, Vite, TanStack Start, or Webpack
+2. **Detects your package manager** - Works with npm, yarn, pnpm, or bun
+3. **Installs dependencies** - Adds `react-grab` package
+4. **Configures your project** - Modifies necessary files to load React Grab in development
+5. **Shows a diff** - Previews all changes before applying them
+
+### CLI Options
+
+Customize the installation with these flags:
+
+```bash
+npx -y grab@latest init [options]
+```
+
+- `-y, --yes` - Skip confirmation prompts
+- `-f, --force` - Force overwrite existing configuration
+- `-a, --agent <agent>` - Connect to your agent (cursor, claude, copilot, mcp)
+- `-k, --key <key>` - Set custom activation key (e.g., Meta+K, Ctrl+Shift+G, Space)
+- `--skip-install` - Skip package installation
+- `-c, --cwd <cwd>` - Specify working directory
+
+### Examples
+
+<CodeGroup>
+```bash Auto-confirm everything
+npx -y grab@latest init --yes
+```
+
+```bash Custom activation key
+npx -y grab@latest init --key "Meta+K"
+```
+
+```bash Install with MCP integration
+npx -y grab@latest init --agent mcp
+```
+
+```bash Force reinstall
+npx -y grab@latest init --force
+```
+</CodeGroup>
+
+## Manual Installation
+
+If you prefer manual installation or the automatic setup doesn't work for your setup, follow the framework-specific instructions below.
+
+### Next.js (App Router)
+
+Add this to your `app/layout.tsx`:
+
+```jsx app/layout.tsx
+import Script from "next/script";
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+<Tip>
+The `beforeInteractive` strategy ensures React Grab loads before your application, capturing all component renders.
+</Tip>
+
+### Next.js (Pages Router)
+
+Add this to your `pages/_document.tsx`:
+
+```jsx pages/_document.tsx
+import { Html, Head, Main, NextScript } from "next/document";
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </Head>
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
+}
+```
+
+### Vite
+
+Add this to your `index.html`:
+
+```html index.html
+<!doctype html>
+<html lang="en">
+  <head>
+    <script type="module">
+      if (import.meta.env.DEV) {
+        import("react-grab");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+<Note>
+Vite's `import.meta.env.DEV` ensures React Grab only loads in development mode.
+</Note>
+
+### Webpack
+
+<Steps>
+  <Step title="Install React Grab">
+    First, install the package:
+
+    <CodeGroup>
+    ```bash npm
+    npm install react-grab
+    ```
+
+    ```bash yarn
+    yarn add react-grab
+    ```
+
+    ```bash pnpm
+    pnpm add react-grab
+    ```
+
+    ```bash bun
+    bun add react-grab
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Import in your entry file">
+    Add this at the top of your main entry file (e.g., `src/index.tsx` or `src/main.tsx`):
+
+    ```tsx src/index.tsx
+    if (process.env.NODE_ENV === "development") {
+      import("react-grab");
+    }
+    ```
+  </Step>
+</Steps>
+
+## Package Managers
+
+React Grab works with all major package managers:
+
+<CodeGroup>
+```bash npm
+npm install react-grab
+```
+
+```bash yarn
+yarn add react-grab
+```
+
+```bash pnpm
+pnpm add react-grab
+```
+
+```bash bun
+bun add react-grab
+```
+</CodeGroup>
+
+## Verification
+
+After installation, verify React Grab is working:
+
+<Steps>
+  <Step title="Start your development server">
+    <CodeGroup>
+    ```bash npm
+    npm run dev
+    ```
+
+    ```bash yarn
+    yarn dev
+    ```
+
+    ```bash pnpm
+    pnpm dev
+    ```
+
+    ```bash bun
+    bun dev
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Open your application">
+    Navigate to your application in a browser (usually `http://localhost:3000` or `http://localhost:5173`).
+  </Step>
+
+  <Step title="Test element selection">
+    Hover over any UI element and press:
+    - **⌘C** on Mac
+    - **Ctrl+C** on Windows/Linux
+
+    You should see a visual indicator when hovering, and the context should be copied to your clipboard.
+  </Step>
+
+  <Step title="Verify clipboard content">
+    Paste the clipboard content into a text editor. You should see output like:
+
+    ```js
+    <button class="btn btn-primary">
+      Click me
+    </button>
+    in Button at components/Button.tsx:12:5
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+If React Grab doesn't appear, check:
+- You're running in development mode
+- The script is loading (check browser network tab)
+- No console errors are present
+- You're hovering before pressing the activation key
+</Warning>
+
+## Monorepo Support
+
+For monorepos, the CLI automatically detects all React projects:
+
+```bash
+npx -y grab@latest init
+```
+
+You'll be prompted to select which project to install React Grab into. To skip the prompt:
+
+```bash
+npx -y grab@latest init -c path/to/specific/project
+```
+
+## Agent Integration
+
+Connect React Grab to your coding agent:
+
+### MCP Integration
+
+For agents supporting Model Context Protocol:
+
+```bash
+npx -y grab@latest add mcp
+```
+
+This configures your agent to automatically access React Grab context.
+
+### Manual Agent Setup
+
+When installing, you can specify an agent:
+
+```bash
+npx -y grab@latest init --agent cursor
+```
+
+Supported agents:
+- `cursor` - Cursor AI
+- `claude` - Claude Code
+- `copilot` - GitHub Copilot
+- `mcp` - Model Context Protocol
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Learn how to use React Grab effectively
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/aidenybai/react-grab">
+    View source code and contribute
+  </Card>
+</CardGroup>

@@ -1,0 +1,362 @@
+---
+title: React Integration
+description: Learn how to integrate React Grab into your React application and access the API from components
+---
+
+## Overview
+
+React Grab provides a React component and global API for integrating element selection functionality into your application. You can access the API from React components using `window.__REACT_GRAB__` and register plugins with custom behavior.
+
+## ReactGrab Component
+
+The `<ReactGrab>` component automatically initializes React Grab in your application.
+
+### Usage
+
+Import and use the component in your React application:
+
+```tsx
+import { ReactGrab } from "react-grab";
+
+function App() {
+  return (
+    <>
+      <ReactGrab />
+      {/* Your app content */}
+    </>
+  );
+}
+```
+
+### Props
+
+The `ReactGrab` component accepts `Options` for configuration:
+
+```tsx
+import { ReactGrab } from "react-grab";
+
+function App() {
+  return (
+    <>
+      <ReactGrab
+        activationKey="Meta+K"
+        activationMode="toggle"
+        maxContextLines={5}
+      />
+      {/* Your app content */}
+    </>
+  );
+}
+```
+
+### Activation Behavior
+
+React Grab only activates in development mode by default:
+
+- **Development:** Automatically enabled when `process.env.NODE_ENV !== "production"`
+- **Production:** Only enabled when URL has query parameter `?react-grab=true`
+
+## Accessing the API
+
+Access the React Grab API through the global `window.__REACT_GRAB__` object.
+
+### API Reference
+
+The `ReactGrabAPI` interface is available at `window.__REACT_GRAB__` after initialization:
+
+```tsx
+interface ReactGrabAPI {
+  registerPlugin(plugin: Plugin): void;
+  unregisterPlugin(name: string): void;
+  setOptions(options: SettableOptions): void;
+  dispose(): void;
+  // ... other methods
+}
+```
+
+## Plugin Registration
+
+Plugins extend React Grab with custom actions, lifecycle hooks, and theme overrides.
+
+### Basic Plugin Example
+
+Register a plugin using vanilla JavaScript:
+
+```js
+window.__REACT_GRAB__.registerPlugin({
+  name: "my-plugin",
+  hooks: {
+    onElementSelect: (element) => {
+      console.log("Selected:", element.tagName);
+    },
+  },
+});
+```
+
+### React Plugin Registration
+
+Register plugins in React components using `useEffect`:
+
+<Steps>
+  <Step title="Import useEffect">
+    Import React's `useEffect` hook:
+
+    ```tsx
+    import { useEffect } from "react";
+    ```
+  </Step>
+
+  <Step title="Register in useEffect">
+    Register your plugin after React Grab loads:
+
+    ```tsx
+    useEffect(() => {
+      const api = window.__REACT_GRAB__;
+      if (!api) return;
+
+      api.registerPlugin({
+        name: "my-plugin",
+        actions: [
+          {
+            id: "my-action",
+            label: "My Action",
+            shortcut: "M",
+            onAction: (context) => {
+              console.log("Action on:", context.element);
+              context.hideContextMenu();
+            },
+          },
+        ],
+      });
+
+      return () => api.unregisterPlugin("my-plugin");
+    }, []);
+    ```
+  </Step>
+
+  <Step title="Clean up on unmount">
+    Always unregister plugins when the component unmounts:
+
+    ```tsx
+    return () => api.unregisterPlugin("my-plugin");
+    ```
+  </Step>
+</Steps>
+
+### Plugin Actions
+
+Actions can appear in the context menu or toolbar based on the `target` field:
+
+<CodeGroup>
+
+```js Context Menu Action
+actions: [
+  {
+    id: "inspect",
+    label: "Inspect",
+    shortcut: "I",
+    onAction: (ctx) => console.dir(ctx.element),
+  },
+]
+```
+
+```js Toolbar Action
+actions: [
+  {
+    id: "toggle-freeze",
+    label: "Freeze",
+    target: "toolbar",
+    isActive: () => isFrozen,
+    onAction: () => toggleFreeze(),
+  },
+]
+```
+
+```js Mixed Actions
+actions: [
+  {
+    id: "inspect",
+    label: "Inspect",
+    shortcut: "I",
+    onAction: (ctx) => console.dir(ctx.element),
+  },
+  {
+    id: "toggle-freeze",
+    label: "Freeze",
+    target: "toolbar",
+    isActive: () => isFrozen,
+    onAction: () => toggleFreeze(),
+  },
+]
+```
+
+</CodeGroup>
+
+## Plugin Configuration
+
+Plugins can provide any combination of:
+
+- **`actions`** — Context menu and/or toolbar items (use `target: "toolbar"` for toolbar)
+- **`hooks`** — Lifecycle callbacks like:
+  - `onActivate` — Called when React Grab is activated
+  - `onElementSelect` — Called when an element is selected
+  - `onCopySuccess` — Called when content is copied
+  - `transformCopyContent` — Modify copied content
+- **`theme`** — Partial theme overrides
+- **`options`** — Override default options like `activationMode` or `keyHoldDuration`
+- **`setup(api)`** — Receives the full `ReactGrabAPI` and can return additional config or cleanup function
+
+### Complete Plugin Example
+
+```tsx
+useEffect(() => {
+  const api = window.__REACT_GRAB__;
+  if (!api) return;
+
+  api.registerPlugin({
+    name: "my-advanced-plugin",
+    actions: [
+      {
+        id: "custom-copy",
+        label: "Copy Custom",
+        shortcut: "C",
+        target: "context-menu",
+        onAction: (ctx) => {
+          navigator.clipboard.writeText(ctx.element.outerHTML);
+          ctx.hideContextMenu();
+        },
+      },
+    ],
+    hooks: {
+      onElementSelect: (element) => {
+        console.log("Selected:", element);
+      },
+      transformCopyContent: (content) => {
+        return `<!-- Custom prefix -->\n${content}`;
+      },
+    },
+    theme: {
+      primaryColor: "#ff6b6b",
+    },
+    options: {
+      maxContextLines: 5,
+    },
+  });
+
+  return () => api.unregisterPlugin("my-advanced-plugin");
+}, []);
+```
+
+## TypeScript Support
+
+React Grab includes full TypeScript definitions:
+
+```tsx
+import type { Plugin, ReactGrabAPI, Options } from "react-grab";
+
+const myPlugin: Plugin = {
+  name: "typed-plugin",
+  hooks: {
+    onElementSelect: (element: HTMLElement) => {
+      console.log(element.tagName);
+    },
+  },
+};
+```
+
+## Framework Examples
+
+### Next.js App Router
+
+Add to `app/layout.tsx`:
+
+```tsx
+import Script from "next/script";
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+### Next.js Pages Router
+
+Add to `pages/_document.tsx`:
+
+```tsx
+import { Html, Head, Main, NextScript } from "next/document";
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </Head>
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
+}
+```
+
+### Vite
+
+Add to `index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <script type="module">
+      if (import.meta.env.DEV) {
+        import("react-grab");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+### Webpack
+
+Install and import in your entry file:
+
+```bash
+npm install react-grab
+```
+
+Then add to `src/index.tsx` or `src/main.tsx`:
+
+```tsx
+if (process.env.NODE_ENV === "development") {
+  import("react-grab");
+}
+```
+
+## Related
+
+- See [Plugin Types Reference](/api/types/plugin) for full `Plugin` interface details
+- See [CLI Commands](/api/cli/init) for installation commands

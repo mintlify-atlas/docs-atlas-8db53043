@@ -1,0 +1,249 @@
+---
+title: grab remove
+description: Disconnect React Grab from your coding agent
+---
+
+## Overview
+
+The `grab remove` command disconnects React Grab from your coding agent, removing agent-specific integrations while keeping React Grab itself installed.
+
+## Usage
+
+```bash
+grab remove [agent]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `[agent]` | Optional agent name to disconnect: `cursor`, `claude`, `copilot`, `windsurf`, or `mcp` |
+
+## Options
+
+| Option | Alias | Description | Default |
+|--------|-------|-------------|----------|
+| `--yes` | `-y` | Skip confirmation prompts | `false` |
+| `--cwd <cwd>` | `-c` | Working directory | Current directory |
+
+## Examples
+
+### Interactive Mode
+
+Run without arguments to select from installed agents:
+
+```bash
+grab remove
+```
+
+<Steps>
+  <Step title="Select agent to remove">
+    Choose from your installed agents:
+
+    ```
+    ? Which agent would you like to disconnect?
+    ❯ Cursor
+      Claude Desktop
+    ```
+  </Step>
+
+  <Step title="Review changes">
+    Preview the file changes:
+
+    ```diff
+    --- app/layout.tsx
+    +++ app/layout.tsx
+    @@ -10,7 +10,6 @@
+           <Script
+             src="//unpkg.com/react-grab/dist/index.global.js"
+    -        data-agent="cursor"
+             crossOrigin="anonymous"
+           />
+         )}
+    ```
+  </Step>
+
+  <Step title="Confirm removal">
+    Confirm to remove the agent integration:
+
+    ```
+    ? Apply these changes? (Y/n)
+    ```
+  </Step>
+</Steps>
+
+### Remove Specific Agent
+
+Specify the agent directly:
+
+<CodeGroup>
+
+```bash Cursor
+grab remove cursor
+```
+
+```bash Claude Desktop
+grab remove claude
+```
+
+```bash GitHub Copilot
+grab remove copilot
+```
+
+```bash Windsurf
+grab remove windsurf
+```
+
+```bash MCP Server
+grab remove mcp
+```
+
+</CodeGroup>
+
+### Non-Interactive Mode
+
+Remove an agent without prompts:
+
+```bash
+grab remove cursor --yes
+```
+
+## What Gets Removed
+
+When you remove an agent integration:
+
+<Steps>
+  <Step title="Agent packages uninstalled">
+    Agent-specific packages are removed:
+
+    ```bash
+    ✔ Removing @react-grab/cursor.
+    ```
+  </Step>
+
+  <Step title="Configuration cleaned">
+    Agent attributes are removed from your code:
+
+    ```diff
+    --- app/layout.tsx
+    +++ app/layout.tsx
+    -  data-agent="cursor"
+    ```
+  </Step>
+
+  <Step title="Package.json updated">
+    Dependencies are removed from `package.json`:
+
+    ```diff
+    --- package.json
+    +++ package.json
+    @@ -5,7 +5,6 @@
+       "dependencies": {
+         "react": "^18.0.0",
+    -    "@react-grab/cursor": "^0.0.1",
+         "react-grab": "^0.0.1"
+       }
+    ```
+  </Step>
+</Steps>
+
+**Note:** React Grab itself remains installed. Only the agent integration is removed.
+
+## Output Example
+
+```bash
+$ grab remove cursor
+✿ React Grab 0.0.1
+
+✔ Preflight checks.
+✔ Preparing to remove Cursor.
+
+--- app/layout.tsx
++++ app/layout.tsx
+@@ -10,7 +10,6 @@
+       <Script
+         src="//unpkg.com/react-grab/dist/index.global.js"
+-        data-agent="cursor"
+         crossOrigin="anonymous"
+       />
+     )}
+
+--- package.json
++++ package.json
+@@ -5,7 +5,6 @@
+   "dependencies": {
+     "react": "^18.0.0",
+-    "@react-grab/cursor": "^0.0.1",
+     "react-grab": "^0.0.1"
+   }
+
+? Apply these changes? (Y/n)
+
+✔ Removing @react-grab/cursor.
+✔ Applying changes to app/layout.tsx.
+✔ Applying changes to package.json.
+
+Success! Cursor has been removed.
+```
+
+## Troubleshooting
+
+### React Grab Not Installed
+
+```
+✖ Preflight checks.
+
+✗ React Grab is not installed.
+Run react-grab init first to install React Grab.
+```
+
+Solution: There's nothing to remove if React Grab isn't installed.
+
+### No Agents Installed
+
+```
+✔ Preflight checks.
+
+⚠ No agent connections are installed.
+```
+
+Solution: No action needed. You have no agents to remove.
+
+### Agent Not Installed
+
+```
+✗ Agent cursor is not installed.
+Installed agents: Claude Desktop
+```
+
+Solution: Check installed agents and specify a valid one.
+
+### Missing Agent Argument
+
+In non-interactive mode:
+
+```
+✗ Please specify an agent to disconnect.
+Installed agents: cursor, claude
+```
+
+Solution: Provide an agent name or remove `--yes` flag for interactive mode.
+
+## Remove vs Uninstall
+
+The `grab remove` command only removes agent integrations:
+
+```bash
+# Remove agent integration (keeps React Grab)
+grab remove cursor
+
+# To completely uninstall React Grab, manually:
+# 1. Remove the script tag or import
+# 2. Run: npm uninstall react-grab
+```
+
+## Related Commands
+
+- [`grab add`](/api/cli/add) — Connect React Grab to your coding agent
+- [`grab init`](/api/cli/init) — Initialize React Grab in your project
+- [`grab configure`](/api/cli/configure) — Configure React Grab options

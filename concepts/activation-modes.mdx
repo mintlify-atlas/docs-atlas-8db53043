@@ -1,0 +1,432 @@
+---
+title: 'Activation Modes'
+description: 'Understanding toggle and hold activation modes'
+---
+
+## Overview
+
+React Grab supports two activation modes that control how you enter and exit inspection mode:
+
+- **Toggle mode** (default) - Press once to activate, press again to deactivate
+- **Hold mode** - Hold the key to activate, release to deactivate
+
+## Activation Modes
+
+### Toggle Mode
+
+In toggle mode, a single keypress activates React Grab and it stays active until you press the key again.
+
+```typescript
+{
+  activationMode: "toggle" // Default
+}
+```
+
+**Behavior:**
+
+1. Press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux) to activate
+2. Inspection mode stays active until you:
+   - Press the activation key again to deactivate
+   - Successfully copy an element (optional auto-deactivate)
+   - Press **Escape**
+
+**Use Cases:**
+
+- Extended inspection sessions
+- Comparing multiple elements
+- Copying several elements in sequence
+- Keyboard-driven navigation with arrow keys
+
+### Hold Mode
+
+In hold mode, React Grab activates only while you hold down the activation key.
+
+```typescript
+{
+  activationMode: "hold",
+  keyHoldDuration: 100 // milliseconds before activation
+}
+```
+
+**Behavior:**
+
+1. Press and **hold** the activation key for `keyHoldDuration` milliseconds
+2. Inspection mode activates while key is held
+3. Release the key to immediately deactivate
+
+**Implementation:**
+
+```typescript
+const DEFAULT_KEY_HOLD_DURATION_MS = 100;
+
+let holdTimerId: number | null = null;
+let holdStartTimestamp: number | null = null;
+
+createEffect(() => {
+  if (store.current.state !== "holding") {
+    clearHoldTimer();
+    return;
+  }
+  
+  holdStartTimestamp = Date.now();
+  holdTimerId = window.setTimeout(() => {
+    holdTimerId = null;
+    actions.activate();
+  }, store.keyHoldDuration);
+  
+  onCleanup(clearHoldTimer);
+});
+```
+
+The system enters "holding" state on keydown, then transitions to "active" after the hold duration expires. On keyup, it immediately deactivates.
+
+**Use Cases:**
+
+- Quick one-off inspections
+- Preventing accidental activation
+- Muscle memory from DevTools (inspect-on-hover)
+- Minimal interference with normal keyboard shortcuts
+
+## Keyboard Shortcuts
+
+### Default Activation Key
+
+By default, React Grab uses the native copy shortcut:
+
+- **Mac**: `⌘C` (Command+C)
+- **Windows/Linux**: `Ctrl+C`
+
+The implementation detects the platform:
+
+```typescript
+const isMac = () => 
+  typeof navigator !== "undefined" && 
+  /Mac|iPhone|iPod|iPad/.test(navigator.platform);
+
+const defaultActivationKey = (event: KeyboardEvent) => {
+  const targetKey = event.code === "KeyC" || event.key === "c";
+  const hasModifier = isMac() ? event.metaKey : event.ctrlKey;
+  const noOtherModifiers = !event.shiftKey && !event.altKey;
+  
+  return targetKey && hasModifier && noOtherModifiers;
+};
+```
+
+### Copy Protection
+
+When activated via the copy shortcut, React Grab prevents the default browser copy action:
+
+```typescript
+if (isTargetKeyCombination(event, activationKey)) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  if (activationMode === "toggle") {
+    toggleActivate();
+  } else {
+    actions.setHolding();
+  }
+}
+```
+
+### Context-Aware Activation
+
+React Grab intelligently handles activation inside inputs:
+
+```typescript
+const allowActivationInsideInput = true; // Default
+
+if (!allowActivationInsideInput && isKeyboardEventTriggeredByInput(event)) {
+  return; // Don't activate
+}
+
+// Allow activation after a delay if user is focused in input
+if (hasTextSelectionInInput()) {
+  setTimeout(() => {
+    if (isActivationKeyPressed()) {
+      activate();
+    }
+  }, INPUT_TEXT_SELECTION_ACTIVATION_DELAY_MS); // 600ms
+}
+```
+
+Constants used:
+
+```typescript
+const INPUT_FOCUS_ACTIVATION_DELAY_MS = 400;
+const INPUT_TEXT_SELECTION_ACTIVATION_DELAY_MS = 600;
+```
+
+### Additional Shortcuts
+
+When React Grab is active:
+
+| Shortcut | Action |
+|----------|--------|
+| **Escape** | Deactivate and exit inspection mode |
+| **Arrow Keys** | Navigate between parent/child/sibling elements |
+| **Enter** | Copy the currently selected element |
+| **Right Click** | Open context menu with actions |
+
+## Activation Key Customization
+
+You can customize the activation key using the `activationKey` option:
+
+### String Format
+
+```typescript
+{
+  activationKey: "KeyI" // Press 'I' key
+}
+```
+
+### Custom Function
+
+For complex key combinations:
+
+```typescript
+{
+  activationKey: (event: KeyboardEvent) => {
+    // Activate with Shift+Alt+I
+    return event.code === "KeyI" && 
+           event.shiftKey && 
+           event.altKey &&
+           !event.metaKey &&
+           !event.ctrlKey;
+  }
+}
+```
+
+### Examples
+
+**Single key:**
+```typescript
+{ activationKey: "KeyG" } // Press 'G'
+```
+
+**With modifiers:**
+```typescript
+{
+  activationKey: (event) => 
+    event.code === "KeyI" && 
+    (event.metaKey || event.ctrlKey) && 
+    event.shiftKey
+} // ⌘⇧I or Ctrl+Shift+I
+```
+
+**Function key:**
+```typescript
+{ activationKey: "F12" } // Press F12
+```
+
+### Parsing Activation Keys
+
+Internally, React Grab parses activation keys:
+
+```typescript
+const parseActivationKey = (
+  activationKey: ActivationKey | undefined
+): ((event: KeyboardEvent) => boolean) => {
+  if (!activationKey) {
+    return defaultActivationKey;
+  }
+  
+  if (typeof activationKey === "function") {
+    return activationKey;
+  }
+  
+  // String format - match key code
+  return (event: KeyboardEvent) => event.code === activationKey;
+};
+```
+
+## Hold Duration Configuration
+
+The `keyHoldDuration` option controls how long you must hold the key before activation:
+
+```typescript
+{
+  activationMode: "hold",
+  keyHoldDuration: 150 // milliseconds
+}
+```
+
+**Recommended values:**
+
+- **100ms** (default) - Quick activation, minimal delay
+- **200ms** - More deliberate, prevents accidental activation
+- **50ms** - Very responsive, may activate unintentionally
+
+### Implementation Details
+
+```typescript
+const DEFAULT_KEY_HOLD_DURATION_MS = 100;
+
+const { store, actions } = createGrabStore({
+  keyHoldDuration: 
+    options.keyHoldDuration ?? 
+    DEFAULT_KEY_HOLD_DURATION_MS,
+});
+```
+
+The hold timer prevents activation from brief keypresses (like double-tapping copy):
+
+```typescript
+// After copy operation completes
+const MIN_HOLD_FOR_ACTIVATION_AFTER_COPY_MS = 200;
+
+if (holdDuration < MIN_HOLD_FOR_ACTIVATION_AFTER_COPY_MS) {
+  // Too short - ignore
+  return;
+}
+```
+
+## State Transitions
+
+The activation state machine:
+
+```typescript
+type ActivationState = 
+  | "idle"       // Not active, waiting for input
+  | "holding"    // Key pressed (hold mode only)
+  | "active"     // Inspection mode active
+  | "copying"    // Copy in progress
+  | "justCopied"; // Brief feedback state
+```
+
+**Toggle mode transitions:**
+
+```
+idle → (keydown) → active → (keydown again) → idle
+     ↓                     ↓
+  (copy)              (copy)
+     ↓                     ↓
+  copying → justCopied → active or idle
+```
+
+**Hold mode transitions:**
+
+```
+idle → (keydown) → holding → (timer) → active → (keyup) → idle
+                      ↓                    ↓
+                  (keyup early)        (copy)
+                      ↓                    ↓
+                    idle              copying → justCopied → idle
+```
+
+## Toolbar Control
+
+The floating toolbar provides a visual toggle:
+
+```typescript
+interface ToolbarState {
+  edge: "top" | "bottom" | "left" | "right";
+  ratio: number;      // Position along edge (0-1)
+  collapsed: boolean; // Minimized state
+  enabled: boolean;   // Master on/off switch
+}
+```
+
+Clicking the toolbar toggle activates in toggle mode regardless of the configured `activationMode`:
+
+```typescript
+const handleToolbarToggle = () => {
+  actions.setWasActivatedByToggle(true);
+  activateRenderer();
+};
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="When to use toggle mode">
+    **Toggle mode** is ideal when:
+    
+    - You're inspecting multiple elements in sequence
+    - You want to use arrow keys to navigate the component tree
+    - You're comparing elements across different parts of the UI
+    - You want inspection mode to persist while you scroll or switch windows
+    
+    Example: Debugging a complex layout with nested components
+  </Accordion>
+
+  <Accordion title="When to use hold mode">
+    **Hold mode** is ideal when:
+    
+    - You want minimal interference with keyboard shortcuts
+    - You prefer inspect-on-demand behavior
+    - You're making quick one-off inspections
+    - You want to prevent accidental activation
+    
+    Example: Quickly checking a single component's source location
+  </Accordion>
+
+  <Accordion title="Customizing for your workflow">
+    Combine activation mode with other options for optimal workflow:
+    
+    ```typescript
+    // Quick inspection with custom key
+    {
+      activationMode: "hold",
+      keyHoldDuration: 150,
+      activationKey: "KeyI"
+    }
+    
+    // Extended inspection with auto-deactivate
+    {
+      activationMode: "toggle",
+      activationKey: (e) => e.code === "KeyG" && e.metaKey
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Examples
+
+### Default Configuration
+
+```typescript
+import { init } from "react-grab";
+
+init({
+  activationMode: "toggle",
+  keyHoldDuration: 100,
+  allowActivationInsideInput: true,
+});
+```
+
+### Hold Mode with Custom Key
+
+```typescript
+init({
+  activationMode: "hold",
+  keyHoldDuration: 200,
+  activationKey: "KeyI", // Press and hold 'I'
+});
+```
+
+### Toggle Mode with Function Key
+
+```typescript
+init({
+  activationMode: "toggle",
+  activationKey: "F9", // Press F9 to toggle
+});
+```
+
+### Custom Modifier Combination
+
+```typescript
+init({
+  activationMode: "toggle",
+  activationKey: (event) => {
+    return (
+      event.code === "KeyE" &&
+      event.altKey &&
+      event.shiftKey &&
+      !event.metaKey &&
+      !event.ctrlKey
+    );
+  },
+});
+```

@@ -1,0 +1,244 @@
+---
+title: Claude Code Integration
+description: Use React Grab with Claude Code agent
+---
+
+The Claude Code integration enables React Grab to communicate with the Claude Agent SDK, allowing you to make UI changes through natural language using Claude's powerful AI capabilities.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @react-grab/claude-code
+    # or
+    pnpm add @react-grab/claude-code
+    # or
+    bun add @react-grab/claude-code
+    # or
+    yarn add @react-grab/claude-code
+    ```
+  </Step>
+
+  <Step title="Start the server">
+    The server runs on port `4567` by default.
+
+    ### Quick Start (CLI)
+
+    Start the server in the background before running your dev server:
+
+    ```bash
+    npx @react-grab/claude-code@latest && pnpm run dev
+    ```
+
+    <Note>
+      The server will run as a detached background process. Stopping your dev server (Ctrl+C) won't stop the React Grab server.
+    </Note>
+
+    To stop it:
+
+    ```bash
+    pkill -f "react-grab.*server"
+    ```
+  </Step>
+
+  <Step title="Add the client to your app">
+    Choose your framework:
+
+    ### Script Tag
+
+    ```html
+    <script src="//unpkg.com/react-grab/dist/index.global.js"></script>
+    <script src="//unpkg.com/@react-grab/claude-code/dist/client.global.js"></script>
+    ```
+
+    ### Next.js
+
+    Using the `Script` component in your `app/layout.tsx`:
+
+    ```jsx
+    import Script from "next/script";
+
+    export default function RootLayout({ children }) {
+      return (
+        <html>
+          <head>
+            {process.env.NODE_ENV === "development" && (
+              <>
+                <Script
+                  src="//unpkg.com/react-grab/dist/index.global.js"
+                  strategy="beforeInteractive"
+                />
+                <Script
+                  src="//unpkg.com/@react-grab/claude-code/dist/client.global.js"
+                  strategy="lazyOnload"
+                />
+              </>
+            )}
+          </head>
+          <body>{children}</body>
+        </html>
+      );
+    }
+    ```
+
+    ### ES Module
+
+    ```tsx
+    import { attachAgent } from "@react-grab/claude-code/client";
+
+    attachAgent();
+    ```
+  </Step>
+</Steps>
+
+## Recommended: Config File Setup
+
+For better lifecycle management, start the server from your config file. This ensures the server stops when your dev server stops:
+
+### Vite
+
+```ts
+// vite.config.ts
+import { startServer } from "@react-grab/claude-code/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+### Next.js
+
+```ts
+// next.config.ts
+import { startServer } from "@react-grab/claude-code/server";
+
+if (process.env.NODE_ENV === "development") {
+  startServer();
+}
+```
+
+## How It Works
+
+```
+┌─────────────────┐      HTTP       ┌─────────────────┐      SDK       ┌─────────────────┐
+│                 │  localhost:4567 │                 │                │                 │
+│   React Grab    │ ──────────────► │     Server      │ ─────────────► │   Claude Code   │
+│    (Browser)    │ ◄────────────── │   (Node.js)     │ ◄───────────── │     (Agent)     │
+│                 │       SSE       │                 │                │                 │
+└─────────────────┘                 └─────────────────┘                └─────────────────┘
+      Client                              Server                            Agent
+```
+
+1. **React Grab** sends the selected element context to the server via HTTP POST
+2. **Server** receives the request and forwards it to Claude Code via the Agent SDK
+3. **Claude Code** processes the request and streams responses back
+4. **Server** relays status updates to the client via Server-Sent Events (SSE)
+
+## Usage
+
+Once installed, you can:
+
+1. **Select an element** in your browser by hovering over it with React Grab active
+2. **Right-click** or use the context menu to choose "Edit with Claude Code"
+3. **Enter your prompt** describing what you want to change
+4. **Watch** as Claude Code makes the changes in real-time
+
+The integration automatically provides:
+- The selected element's HTML structure
+- Component name and file location
+- Line numbers for precise targeting
+- Full context for accurate modifications
+
+## Example Workflow
+
+<Steps>
+  <Step title="Select the element">
+    Hover over any UI element in your browser and press **Cmd+C** (Mac) or **Ctrl+C** (Windows/Linux).
+  </Step>
+
+  <Step title="Trigger Claude Code">
+    Right-click and choose "Edit with Claude Code" from the context menu.
+  </Step>
+
+  <Step title="Describe your change">
+    Enter a prompt like:
+    ```
+    Add a loading spinner to this button when it's clicked
+    ```
+  </Step>
+
+  <Step title="Review the changes">
+    Claude Code will modify the component file intelligently, and you'll see the changes in your browser.
+  </Step>
+</Steps>
+
+## Advanced Configuration
+
+You can customize the Claude Code provider:
+
+```typescript
+import { createClaudeCodeAgentProvider } from "@react-grab/claude-code/client";
+
+const provider = createClaudeCodeAgentProvider({
+  serverUrl: "http://localhost:4567",
+  // Add custom configuration here
+});
+```
+
+## Why Use Claude Code with React Grab?
+
+Claude Code excels at:
+
+- **Understanding context**: Claude can understand complex UI patterns and relationships
+- **Making intelligent changes**: Goes beyond simple edits to suggest architectural improvements
+- **Following best practices**: Applies React and TypeScript best practices automatically
+- **Handling edge cases**: Considers accessibility, responsiveness, and error states
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server won't start">
+    - Check if port 4567 is already in use
+    - Try killing existing processes: `pkill -f "react-grab.*server"`
+    - Ensure you have the Claude Agent SDK configured
+  </Accordion>
+
+  <Accordion title="No response from Claude Code">
+    - Verify the Claude Agent SDK is properly installed
+    - Check server logs for API errors
+    - Ensure you have valid API credentials
+  </Accordion>
+
+  <Accordion title="Context not being sent">
+    - Verify the client script is loaded in your browser
+    - Check browser console for connection errors
+    - Ensure the server is running before loading your app
+  </Accordion>
+
+  <Accordion title="Changes not appearing">
+    - Check that your files are writable
+    - Verify Claude Code has permissions to modify files
+    - Look for error messages in the server logs
+  </Accordion>
+</AccordionGroup>
+
+## Performance Benefits
+
+Using React Grab with Claude Code can make your development workflow up to **3× faster** by:
+
+- Providing precise element context without manual file searching
+- Reducing the need for follow-up questions from the AI
+- Enabling direct, targeted modifications instead of broad refactoring
+- Including file paths and line numbers for instant navigation
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with React Grab
+  </Card>
+  <Card title="Plugin API" icon="puzzle-piece" href="/api/plugins">
+    Learn about the plugin system
+  </Card>
+</CardGroup>

@@ -1,0 +1,254 @@
+---
+title: 'Webpack Integration'
+description: 'Install React Grab in your Webpack project with entry file setup'
+icon: 'cube'
+---
+
+React Grab integrates with Webpack-based projects through your main entry file, leveraging Webpack's module system for optimal loading.
+
+## Automatic Installation
+
+Let the CLI handle the setup for you:
+
+<Steps>
+  <Step title="Run the CLI">
+    Navigate to your project root and run:
+    
+    ```bash
+    npx -y grab@latest init
+    ```
+    
+    The CLI will detect your Webpack setup and configure React Grab automatically.
+  </Step>
+  
+  <Step title="Start your dev server">
+    Launch your Webpack development server:
+    
+    ```bash
+    npm start
+    # or
+    npm run dev
+    ```
+  </Step>
+  
+  <Step title="Verify installation">
+    Hover over any UI element and press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux).
+  </Step>
+</Steps>
+
+## Manual Installation
+
+For manual setup or custom configurations:
+
+<Steps>
+  <Step title="Install React Grab">
+    Add React Grab as a development dependency:
+    
+    ```bash
+    npm install react-grab
+    ```
+  </Step>
+  
+  <Step title="Update your entry file">
+    Add this code at the **top** of your main entry file (e.g., `src/index.tsx` or `src/main.tsx`):
+    
+    ```tsx src/index.tsx
+    if (process.env.NODE_ENV === "development") {
+      import("react-grab");
+    }
+
+    import React from "react";
+    import ReactDOM from "react-dom/client";
+    import App from "./App";
+    import "./index.css";
+
+    const root = ReactDOM.createRoot(
+      document.getElementById("root") as HTMLElement
+    );
+    
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Place the import at the **top** of your entry file, before any other imports. This ensures React Grab initializes before your React application.
+</Warning>
+
+## How It Works
+
+Webpack's conditional compilation and tree-shaking work together to optimize React Grab:
+
+1. **Development**: When `process.env.NODE_ENV === "development"`, the dynamic import executes and React Grab loads
+2. **Production**: Webpack's DefinePlugin replaces `process.env.NODE_ENV` with `"production"`, making the condition false
+3. **Tree-shaking**: Dead code elimination removes the entire import statement from your production bundle
+
+This ensures zero production overhead.
+
+## Webpack Configuration
+
+Most Webpack setups include the DefinePlugin by default. If you have a custom configuration, ensure you have:
+
+```js webpack.config.js
+const webpack = require('webpack');
+
+module.exports = {
+  // ... other config
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    }),
+    // ... other plugins
+  ]
+};
+```
+
+<Note>
+  Create React App, Next.js with Webpack, and most modern Webpack setups include this configuration automatically.
+</Note>
+
+## Common Entry Files
+
+React Grab should be added to your main entry file. Common locations include:
+
+- `src/index.tsx` or `src/index.js` (Create React App)
+- `src/main.tsx` or `src/main.js` (Vite-style projects)
+- `src/app.tsx` or `src/app.js` (custom setups)
+- Any file specified as `entry` in your `webpack.config.js`
+
+If you're unsure which file to modify, check your `webpack.config.js`:
+
+```js webpack.config.js
+module.exports = {
+  entry: './src/index.tsx', // This is your entry file
+  // ...
+};
+```
+
+## Verification
+
+<Steps>
+  <Step title="Start development mode">
+    ```bash
+    npm start
+    ```
+    
+    Open your browser console and check for any errors.
+  </Step>
+  
+  <Step title="Test React Grab">
+    - Hover over any UI element
+    - Press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux)
+    - Verify the context is copied to your clipboard
+  </Step>
+  
+  <Step title="Verify production exclusion">
+    Build for production and check the bundle:
+    
+    ```bash
+    npm run build
+    ```
+    
+    React Grab should not appear in your production bundle. You can verify this by:
+    - Checking the bundle size (should be unchanged)
+    - Searching for "react-grab" in your build output (should not be found)
+  </Step>
+</Steps>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Module not found: react-grab">
+    Ensure React Grab is installed:
+    
+    ```bash
+    npm install react-grab
+    ```
+    
+    Then restart your dev server.
+  </Accordion>
+  
+  <Accordion title="process.env.NODE_ENV is undefined">
+    Your Webpack configuration may be missing the DefinePlugin. Add it to your `webpack.config.js`:
+    
+    ```js
+    const webpack = require('webpack');
+    
+    module.exports = {
+      plugins: [
+        new webpack.DefinePlugin({
+          'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+        })
+      ]
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Still loading in production">
+    Verify your build script sets NODE_ENV to production:
+    
+    ```json package.json
+    {
+      "scripts": {
+        "build": "NODE_ENV=production webpack --mode production"
+      }
+    }
+    ```
+    
+    On Windows, use `cross-env`:
+    
+    ```bash
+    npm install -D cross-env
+    ```
+    
+    ```json package.json
+    {
+      "scripts": {
+        "build": "cross-env NODE_ENV=production webpack --mode production"
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="TypeScript errors">
+    If TypeScript complains about the dynamic import, ensure your `tsconfig.json` has:
+    
+    ```json
+    {
+      "compilerOptions": {
+        "module": "esnext",
+        "moduleResolution": "node"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Create React App
+
+If you're using Create React App (CRA), follow the standard manual installation:
+
+1. Install React Grab: `npm install react-grab`
+2. Add the import to `src/index.tsx` or `src/index.js`
+3. Start your dev server: `npm start`
+
+CRA's Webpack configuration already includes all necessary plugins.
+
+<Note>
+  CRA's production build automatically strips development-only code, so React Grab will be excluded from your production bundle.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agent Integration" icon="robot" href="/essentials/agent-integration">
+    Connect React Grab to Cursor, Claude, or other AI assistants
+  </Card>
+  <Card title="Configuration" icon="wrench" href="/api-reference/options">
+    Customize activation behavior and options
+  </Card>
+</CardGroup>

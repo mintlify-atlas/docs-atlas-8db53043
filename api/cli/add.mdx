@@ -1,0 +1,274 @@
+---
+title: grab add
+description: Connect React Grab to your coding agent for seamless integration
+---
+
+## Overview
+
+The `grab add` command connects React Grab to your coding agent, enabling seamless context sharing. It supports legacy agent integrations and MCP server installation.
+
+## Usage
+
+```bash
+grab add [agent]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `[agent]` | Optional agent name: `cursor`, `claude`, `copilot`, `windsurf`, or `mcp` |
+
+## Options
+
+| Option | Alias | Description | Default |
+|--------|-------|-------------|----------|
+| `--yes` | `-y` | Skip confirmation prompts | `false` |
+| `--cwd <cwd>` | `-c` | Working directory | Current directory |
+
+## Examples
+
+### Interactive Mode
+
+Run without arguments to choose from available options:
+
+```bash
+grab add
+```
+
+<Steps>
+  <Step title="Select connection mode">
+    Choose between MCP or legacy agent:
+
+    ```
+    ? How would you like to connect?
+    ❯ MCP Server (recommended)
+      Legacy Agent Integration
+    ```
+  </Step>
+
+  <Step title="Select agent (if legacy)">
+    Choose your coding agent:
+
+    ```
+    ? Which agent would you like to connect?
+    ❯ Cursor
+      Claude Desktop
+      GitHub Copilot
+      Windsurf
+      Skip
+    ```
+  </Step>
+
+  <Step title="Review changes">
+    Preview the file changes:
+
+    ```diff
+    --- app/layout.tsx
+    +++ app/layout.tsx
+    @@ -10,6 +10,7 @@
+           <Script
+             src="//unpkg.com/react-grab/dist/index.global.js"
+    +        data-agent="cursor"
+             crossOrigin="anonymous"
+           />
+         )}
+    ```
+  </Step>
+
+  <Step title="Apply changes">
+    Confirm to install the agent integration:
+
+    ```
+    ? Apply these changes? (Y/n)
+    ```
+  </Step>
+</Steps>
+
+### Add Specific Agent
+
+Specify the agent directly:
+
+<CodeGroup>
+
+```bash Cursor
+grab add cursor
+```
+
+```bash Claude Desktop
+grab add claude
+```
+
+```bash GitHub Copilot
+grab add copilot
+```
+
+```bash Windsurf
+grab add windsurf
+```
+
+```bash MCP Server
+grab add mcp
+```
+
+</CodeGroup>
+
+### Non-Interactive Mode
+
+Install an agent without prompts:
+
+```bash
+grab add cursor --yes
+```
+
+## MCP Server Installation
+
+When selecting MCP, the CLI will:
+
+<Steps>
+  <Step title="Detect installed agents">
+    Scan for supported agents on your system:
+
+    ```
+    Scanning for agents...
+    ✔ Found: Cursor, Claude Desktop
+    ```
+  </Step>
+
+  <Step title="Configure MCP server">
+    Automatically add the MCP server to agent configs:
+
+    ```json
+    {
+      "mcpServers": {
+        "react-grab": {
+          "command": "npx",
+          "args": ["-y", "@react-grab/mcp-server"]
+        }
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Update React Grab">
+    Add MCP metadata to your React Grab installation:
+
+    ```diff
+    --- package.json
+    +++ package.json
+    @@ -5,6 +5,7 @@
+       "dependencies": {
+         "react": "^18.0.0",
+    +    "@react-grab/mcp-server": "^0.0.1",
+         "react-grab": "^0.0.1"
+       }
+    ```
+  </Step>
+
+  <Step title="Restart agents">
+    ```
+    Success! MCP server has been configured.
+    Restart your agents to activate.
+    ```
+  </Step>
+</Steps>
+
+## Agent Replacement
+
+If you already have an agent installed, you can:
+
+1. **Replace** — Remove the existing agent and install the new one
+2. **Add alongside** — Keep both agents installed
+3. **Cancel** — Abort the operation
+
+### Example
+
+```bash
+grab add claude
+```
+
+Output:
+
+```
+⚠ Cursor is already installed.
+
+? How would you like to proceed?
+❯ Replace with Claude Desktop
+  Add Claude Desktop alongside existing
+  Cancel
+```
+
+## Output Example
+
+```bash
+$ grab add cursor
+✿ React Grab 0.0.1
+
+✔ Preflight checks.
+✔ Adding Cursor.
+
+--- app/layout.tsx
++++ app/layout.tsx
+@@ -10,6 +10,7 @@
+       <Script
+         src="//unpkg.com/react-grab/dist/index.global.js"
++        data-agent="cursor"
+         crossOrigin="anonymous"
+       />
+     )}
+
+? Apply these changes? (Y/n)
+
+✔ Installing @react-grab/cursor.
+✔ Applying changes to app/layout.tsx.
+✔ Applying changes to package.json.
+
+Success! Cursor has been added.
+Make sure to start the agent server before using it.
+```
+
+## Troubleshooting
+
+### React Grab Not Installed
+
+```
+✖ Preflight checks.
+
+✗ React Grab is not installed.
+Run react-grab init first to install React Grab.
+```
+
+Solution: Run [`grab init`](/api/cli/init) first.
+
+### Agent Already Installed
+
+```
+⚠ Cursor is already installed.
+```
+
+Solution: Choose to replace or add alongside the existing agent.
+
+### Invalid Agent Name
+
+```
+✗ Invalid agent: unknown
+Available agents: cursor, claude, copilot, windsurf
+```
+
+Solution: Use one of the supported agent names.
+
+## Supported Agents
+
+| Agent | Name | Description |
+|-------|------|-------------|
+| Cursor | `cursor` | Cursor IDE integration |
+| Claude Desktop | `claude` | Claude Desktop app integration |
+| GitHub Copilot | `copilot` | GitHub Copilot integration |
+| Windsurf | `windsurf` | Windsurf IDE integration |
+| MCP Server | `mcp` | Model Context Protocol server (recommended) |
+
+## Related Commands
+
+- [`grab init`](/api/cli/init) — Initialize React Grab in your project
+- [`grab remove`](/api/cli/remove) — Disconnect agent integrations
+- [`grab configure`](/api/cli/configure) — Configure React Grab options

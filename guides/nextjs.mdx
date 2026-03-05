@@ -1,0 +1,153 @@
+---
+title: 'Next.js Integration'
+description: 'Install React Grab in your Next.js project with App Router or Pages Router'
+icon: 'triangle'
+---
+
+React Grab integrates seamlessly with Next.js, supporting both the App Router and Pages Router.
+
+## Automatic Installation
+
+The easiest way to install React Grab in your Next.js project:
+
+<Steps>
+  <Step title="Run the CLI">
+    Navigate to your project root (where `next.config.ts` is located) and run:
+    
+    ```bash
+    npx -y grab@latest init
+    ```
+    
+    The CLI will automatically detect your Next.js setup and router type.
+  </Step>
+  
+  <Step title="Verify the installation">
+    Start your development server:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    Hover over any UI element and press **⌘C** (Mac) or **Ctrl+C** (Windows/Linux) to copy its context.
+  </Step>
+</Steps>
+
+## Manual Installation
+
+If you prefer to set up React Grab manually or the automatic installation doesn't work for your setup:
+
+<CodeGroup>
+
+```jsx App Router (app/layout.tsx)
+import Script from "next/script";
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+```jsx Pages Router (pages/_document.tsx)
+import { Html, Head, Main, NextScript } from "next/document";
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
+      </Head>
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  );
+}
+```
+
+</CodeGroup>
+
+<Warning>
+  Make sure to wrap the Script component in a `process.env.NODE_ENV === "development"` check to ensure React Grab only loads in development mode.
+</Warning>
+
+## Router Detection
+
+The CLI automatically detects your Next.js router type:
+
+- **App Router**: Looks for `app/layout.tsx` or `app/layout.js`
+- **Pages Router**: Looks for `pages/_document.tsx` or `pages/_document.js`
+
+If you have a custom setup, use the [manual installation guide](/guides/manual-installation).
+
+## Verification
+
+After installation, verify React Grab is working:
+
+<Steps>
+  <Step title="Start your dev server">
+    ```bash
+    npm run dev
+    ```
+  </Step>
+  
+  <Step title="Open your app in the browser">
+    Navigate to any page in your Next.js application.
+  </Step>
+  
+  <Step title="Test the copy functionality">
+    Hover over any UI element and press:
+    - **⌘C** (Cmd+C) on Mac
+    - **Ctrl+C** on Windows/Linux
+    
+    You should see the element's context copied to your clipboard, including:
+    - File name and line number
+    - React component name
+    - HTML source code
+  </Step>
+</Steps>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Script not loading in App Router">
+    Ensure you're adding the Script component inside the `<head>` tag, not in the `<body>`. The `strategy="beforeInteractive"` ensures it loads before your app hydrates.
+  </Accordion>
+  
+  <Accordion title="TypeScript errors with _document.tsx">
+    Make sure you're importing Script from `next/script`, not `next/document`. The Script component in Pages Router should still be imported from `next/script`.
+  </Accordion>
+  
+  <Accordion title="Not working in production">
+    React Grab is designed for development only. The `process.env.NODE_ENV === "development"` check prevents it from loading in production builds.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Connect to Your Agent" icon="link" href="/essentials/agent-integration">
+    Set up React Grab with Cursor, Claude, or other AI coding agents
+  </Card>
+  <Card title="Configure Options" icon="sliders" href="/api-reference/options">
+    Customize activation keys, context limits, and more
+  </Card>
+</CardGroup>

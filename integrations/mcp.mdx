@@ -1,0 +1,220 @@
+---
+title: MCP (Model Context Protocol)
+description: Connect React Grab to AI tools via Model Context Protocol
+---
+
+The MCP integration allows React Grab to communicate with AI tools that support the Model Context Protocol. This provides a standardized way to share UI context with various AI assistants.
+
+## What is MCP?
+
+Model Context Protocol (MCP) is a standardized protocol for sharing context between applications and AI tools. React Grab's MCP integration enables you to:
+
+- Share selected UI elements with MCP-compatible AI tools
+- Automatically send context when you copy elements
+- Stream UI selections to your AI assistant in real-time
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @react-grab/mcp
+    # or
+    pnpm add @react-grab/mcp
+    # or
+    bun add @react-grab/mcp
+    # or
+    yarn add @react-grab/mcp
+    ```
+  </Step>
+
+  <Step title="Start the MCP server">
+    The MCP server runs on port `7567` by default and handles communication between React Grab and MCP-compatible tools.
+
+    ### Quick Start (CLI)
+
+    Start the server before running your dev server:
+
+    ```bash
+    npx @react-grab/mcp@latest && pnpm run dev
+    ```
+
+    <Note>
+      The server runs as a detached background process. Stopping your dev server (Ctrl+C) won't stop the MCP server.
+    </Note>
+
+    To stop the server:
+
+    ```bash
+    pkill -f "react-grab.*server"
+    ```
+  </Step>
+
+  <Step title="Add the client to your app">
+    Choose your framework:
+
+    ### Script Tag
+
+    ```html
+    <script src="//unpkg.com/react-grab/dist/index.global.js"></script>
+    <script src="//unpkg.com/@react-grab/mcp/dist/client.global.js"></script>
+    ```
+
+    ### Next.js
+
+    Add to your `app/layout.tsx`:
+
+    ```jsx
+    import Script from "next/script";
+
+    export default function RootLayout({ children }) {
+      return (
+        <html>
+          <head>
+            {process.env.NODE_ENV === "development" && (
+              <>
+                <Script
+                  src="//unpkg.com/react-grab/dist/index.global.js"
+                  strategy="beforeInteractive"
+                />
+                <Script
+                  src="//unpkg.com/@react-grab/mcp/dist/client.global.js"
+                  strategy="lazyOnload"
+                />
+              </>
+            )}
+          </head>
+          <body>{children}</body>
+        </html>
+      );
+    }
+    ```
+
+    ### ES Module
+
+    ```tsx
+    import { attachMcpPlugin } from "@react-grab/mcp/client";
+
+    attachMcpPlugin();
+    ```
+  </Step>
+</Steps>
+
+## Recommended: Config File Setup
+
+For better lifecycle management, start the server from your config file. This ensures the server stops when your dev server stops:
+
+### Vite
+
+```ts
+// vite.config.ts
+import { startMcpServer } from "@react-grab/mcp/server";
+
+if (process.env.NODE_ENV === "development") {
+  startMcpServer();
+}
+```
+
+### Next.js
+
+```ts
+// next.config.ts
+import { startMcpServer } from "@react-grab/mcp/server";
+
+if (process.env.NODE_ENV === "development") {
+  startMcpServer();
+}
+```
+
+## How It Works
+
+```
+┌─────────────────┐      HTTP       ┌─────────────────┐      MCP       ┌─────────────────┐
+│                 │  localhost:7567 │                 │                │                 │
+│   React Grab    │ ──────────────► │   MCP Server    │ ─────────────► │   AI Tools      │
+│    (Browser)    │ ◄────────────── │   (Node.js)     │ ◄───────────── │   (via MCP)     │
+│                 │                 │                 │                │                 │
+└─────────────────┘                 └─────────────────┘                └─────────────────┘
+      Client                              Server                            Tools
+```
+
+1. **React Grab** sends selected element context to the MCP server via HTTP POST
+2. **MCP Server** stores the context and makes it available via the MCP protocol
+3. **AI Tools** can query the server to retrieve the latest UI context
+4. The context includes HTML structure, component info, and optional user prompts
+
+## Using with AI Tools
+
+Once the MCP server is running, AI tools can use the `get_element_context` tool to retrieve the latest context you've selected in React Grab.
+
+### Context Format
+
+The MCP server provides context in this format:
+
+```
+Prompt: [Your custom prompt if provided]
+
+Elements:
+<button class="submit-btn">Submit</button>
+in SubmitButton at components/form.tsx:42:10
+```
+
+### Context Expiration
+
+Context automatically expires after a certain time to prevent stale data from being used. The server tracks when context was submitted and clears it after the TTL expires.
+
+## Server Options
+
+You can customize the MCP server:
+
+```typescript
+import { startMcpServer } from "@react-grab/mcp/server";
+
+startMcpServer({
+  port: 7567,        // Custom port (default: 7567)
+  stdio: false,      // Use stdio transport instead of HTTP (default: false)
+});
+```
+
+### STDIO Mode
+
+For direct integration with MCP-compatible tools that use stdin/stdout:
+
+```bash
+react-grab-mcp --stdio
+```
+
+This mode starts the MCP server using stdio transport while also running an HTTP server for receiving context from the browser.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="MCP server won't start">
+    - Check if port 7567 is already in use
+    - Try killing any existing processes: `pkill -f "react-grab.*server"`
+    - Check server logs for error messages
+  </Accordion>
+
+  <Accordion title="Context not appearing in AI tool">
+    - Verify the MCP server is running by checking `http://localhost:7567/health`
+    - Make sure your AI tool is configured to connect to the React Grab MCP server
+    - Check that the context hasn't expired (try selecting an element again)
+  </Accordion>
+
+  <Accordion title="Browser can't connect to server">
+    - Ensure the server is running before loading your app
+    - Check browser console for CORS or connection errors
+    - Verify the server URL matches the configured port
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Plugin API" icon="puzzle-piece" href="/api/plugins">
+    Learn about the plugin system and hooks
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Customize React Grab behavior
+  </Card>
+</CardGroup>

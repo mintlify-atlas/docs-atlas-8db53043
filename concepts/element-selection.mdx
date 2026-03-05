@@ -1,0 +1,668 @@
+---
+title: 'Element Selection'
+description: 'How element selection, drag selection, and visual feedback work'
+---
+
+## Overview
+
+React Grab provides precise element selection with real-time visual feedback. You can select single elements by hovering, or multiple elements by dragging.
+
+## Single Element Selection
+
+### Hover Detection
+
+When activated, React Grab continuously tracks your cursor position to detect the element underneath:
+
+```typescript
+const detectElementAtPosition = (clientX: number, clientY: number) => {
+  const element = getElementAtPosition(clientX, clientY);
+  
+  if (isValidGrabbableElement(element)) {
+    actions.setDetectedElement(element);
+  }
+};
+```
+
+### Element Position Detection
+
+The `getElementAtPosition()` function uses `document.elementsFromPoint()` to find all elements at the cursor:
+
+```typescript
+const getElementAtPosition = (
+  clientX: number,
+  clientY: number
+): Element | null => {
+  const elements = document.elementsFromPoint(clientX, clientY);
+  
+  for (const element of elements) {
+    // Skip React Grab's own overlay elements
+    if (isEventFromOverlay(element)) continue;
+    
+    // Skip invalid elements
+    if (!isValidGrabbableElement(element)) continue;
+    
+    return element;
+  }
+  
+  return null;
+};
+```
+
+### Valid Element Criteria
+
+Elements must pass several checks to be selectable:
+
+```typescript
+const isValidGrabbableElement = (element: Element | null): boolean => {
+  if (!element) return false;
+  
+  // Must be connected to DOM
+  if (!isElementConnected(element)) return false;
+  
+  // Can't be root elements
+  if (isRootElement(element)) return false;
+  
+  // Respect user ignore attribute
+  if (element.hasAttribute(USER_IGNORE_ATTRIBUTE)) return false;
+  
+  // Can't be part of React Grab UI
+  if (element.closest('[data-react-grab-overlay]')) return false;
+  
+  return true;
+};
+```
+
+Root elements that are filtered out:
+
+```typescript
+const isRootElement = (element: Element): boolean => {
+  const tagName = element.tagName.toLowerCase();
+  
+  if (tagName === "html" || tagName === "body") return true;
+  
+  // Common root container IDs
+  const id = element.id;
+  if (id === "root" || id === "__next" || id === "app") return true;
+  
+  return false;
+};
+```
+
+### Ignoring Elements
+
+You can mark elements to be ignored:
+
+```jsx
+<div data-react-grab-ignore>
+  {/* This element and its children won't be selectable */}
+</div>
+```
+
+### Detection Throttling
+
+To optimize performance, element detection is throttled:
+
+```typescript
+const ELEMENT_DETECTION_THROTTLE_MS = 32; // ~30 fps
+
+let lastElementDetectionTime = 0;
+
+if (now - lastElementDetectionTime < ELEMENT_DETECTION_THROTTLE_MS) {
+  return; // Skip this detection
+}
+
+lastElementDetectionTime = now;
+```
+
+## Multi-Element Selection
+
+### Drag Selection
+
+Click and drag to select multiple elements within a rectangular area:
+
+1. **Click** starts the drag at `(startX, startY)`
+2. **Drag** updates the rectangle continuously
+3. **Release** finalizes the selection
+
+### Drag State Management
+
+```typescript
+const [isDragging, setIsDragging] = createSignal(false);
+const [dragStart, setDragStart] = createSignal({ x: 0, y: 0 });
+
+const handleMouseDown = (event: MouseEvent) => {
+  if (!isActivated()) return;
+  
+  setDragStart({
+    x: event.clientX + window.scrollX,
+    y: event.clientY + window.scrollY,
+  });
+  
+  actions.startDragging();
+};
+
+const handleMouseMove = (event: MouseEvent) => {
+  if (!isDragging()) return;
+  
+  const dragDistance = calculateDragDistance(
+    event.clientX,
+    event.clientY
+  );
+  
+  if (dragDistance.x > DRAG_THRESHOLD_PX || 
+      dragDistance.y > DRAG_THRESHOLD_PX) {
+    updateDragRectangle(event.clientX, event.clientY);
+  }
+};
+```
+
+### Drag Threshold
+
+Small movements don't trigger drag mode:
+
+```typescript
+const DRAG_THRESHOLD_PX = 2;
+
+const isDraggingBeyondThreshold = createMemo(() => {
+  if (!isDragging()) return false;
+  
+  const dragDistance = calculateDragDistance(
+    store.pointer.x,
+    store.pointer.y
+  );
+  
+  return (
+    dragDistance.x > DRAG_THRESHOLD_PX || 
+    dragDistance.y > DRAG_THRESHOLD_PX
+  );
+});
+```
+
+### Rectangle Calculation
+
+```typescript
+const calculateDragRectangle = (
+  endX: number,
+  endY: number
+): DragRect => {
+  const endPageX = endX + window.scrollX;
+  const endPageY = endY + window.scrollY;
+  
+  const x = Math.min(store.dragStart.x, endPageX);
+  const y = Math.min(store.dragStart.y, endPageY);
+  const width = Math.abs(endPageX - store.dragStart.x);
+  const height = Math.abs(endPageY - store.dragStart.y);
+  
+  return { x, y, width, height };
+};
+```
+
+### Element Detection Within Drag
+
+React Grab samples points within the drag rectangle to find intersecting elements:
+
+```typescript
+const DRAG_SELECTION_SAMPLE_SPACING_PX = 32;
+const DRAG_SELECTION_COVERAGE_THRESHOLD = 0.75;
+const DRAG_SELECTION_MAX_TOTAL_SAMPLE_POINTS = 100;
+
+const getElementsInDrag = (
+  dragRect: DragRect,
+  validator: (element: Element) => boolean,
+  requireCoverage = true
+): Element[] => {
+  // Calculate sample grid
+  const samplesX = Math.min(
+    Math.max(
+      Math.floor(dragRect.width / DRAG_SELECTION_SAMPLE_SPACING_PX),
+      DRAG_SELECTION_MIN_SAMPLES_PER_AXIS
+    ),
+    DRAG_SELECTION_MAX_SAMPLES_PER_AXIS
+  );
+  
+  const samplesY = Math.min(
+    Math.max(
+      Math.floor(dragRect.height / DRAG_SELECTION_SAMPLE_SPACING_PX),
+      DRAG_SELECTION_MIN_SAMPLES_PER_AXIS
+    ),
+    DRAG_SELECTION_MAX_SAMPLES_PER_AXIS
+  );
+  
+  const elementsMap = new Map<Element, number>();
+  let totalSamples = 0;
+  
+  // Sample grid points
+  for (let xi = 0; xi < samplesX; xi++) {
+    for (let yi = 0; yi < samplesY; yi++) {
+      const x = dragRect.x + (xi / (samplesX - 1)) * dragRect.width;
+      const y = dragRect.y + (yi / (samplesY - 1)) * dragRect.height;
+      
+      const element = getElementAtPosition(x, y);
+      if (!element || !validator(element)) continue;
+      
+      const hitCount = elementsMap.get(element) ?? 0;
+      elementsMap.set(element, hitCount + 1);
+      totalSamples++;
+    }
+  }
+  
+  // Filter by coverage threshold
+  const elements: Element[] = [];
+  
+  for (const [element, hits] of elementsMap.entries()) {
+    if (!requireCoverage) {
+      elements.push(element);
+      continue;
+    }
+    
+    const coverage = hits / totalSamples;
+    if (coverage >= DRAG_SELECTION_COVERAGE_THRESHOLD) {
+      elements.push(element);
+    }
+  }
+  
+  return elements;
+};
+```
+
+This algorithm:
+
+1. **Creates a grid** of sample points within the drag rectangle
+2. **Tests each point** to find the element underneath
+3. **Counts hits** for each unique element
+4. **Filters elements** that meet the coverage threshold (75% of samples)
+
+### Drag Preview
+
+During drag, preview boxes show which elements will be selected:
+
+```typescript
+const DRAG_PREVIEW_DEBOUNCE_MS = 32;
+
+const dragPreviewBounds = createMemo((): OverlayBounds[] => {
+  if (!isDraggingBeyondThreshold()) return [];
+  
+  const pointer = debouncedDragPointer();
+  if (!pointer) return [];
+  
+  const drag = calculateDragRectangle(pointer.x, pointer.y);
+  const elements = getElementsInDrag(drag, isValidGrabbableElement);
+  
+  return elements.map((element) => createElementBounds(element));
+});
+```
+
+The preview is debounced to avoid excessive calculations during rapid mouse movement.
+
+## Visual Feedback System
+
+### Selection Box
+
+Highlights the currently hovered element:
+
+```typescript
+interface OverlayBounds {
+  x: number;            // Client X coordinate
+  y: number;            // Client Y coordinate
+  width: number;        // Box width
+  height: number;       // Box height
+  borderRadius: string; // Matches element's border-radius
+  transform: string;    // CSS transform to apply
+}
+
+const selectionBounds = createMemo((): OverlayBounds | undefined => {
+  const element = selectionElement();
+  if (!element) return undefined;
+  
+  return createElementBounds(element);
+});
+```
+
+### Bounds Calculation
+
+Accurately calculates element bounds including transforms:
+
+```typescript
+const createElementBounds = (element: Element): OverlayBounds => {
+  const rect = element.getBoundingClientRect();
+  const computedStyle = getComputedStyle(element);
+  
+  return {
+    x: rect.left,
+    y: rect.top,
+    width: rect.width,
+    height: rect.height,
+    borderRadius: computedStyle.borderRadius || "0px",
+    transform: computedStyle.transform || "none",
+  };
+};
+```
+
+### Transform Handling
+
+For elements with CSS transforms, React Grab walks up the ancestor tree:
+
+```typescript
+const MAX_TRANSFORM_ANCESTOR_DEPTH = 6;
+
+let currentElement: Element | null = element;
+let depth = 0;
+
+while (currentElement && depth < MAX_TRANSFORM_ANCESTOR_DEPTH) {
+  const style = getComputedStyle(currentElement);
+  if (style.transform && style.transform !== "none") {
+    // Accumulate transforms
+  }
+  currentElement = currentElement.parentElement;
+  depth++;
+}
+```
+
+### Smooth Interpolation
+
+Selection boxes smoothly follow the cursor using linear interpolation (lerp):
+
+```typescript
+const SELECTION_LERP_FACTOR = 0.95;
+
+const updateSelectionPosition = () => {
+  const target = targetBounds();
+  const current = currentBounds();
+  
+  const newX = current.x * SELECTION_LERP_FACTOR + 
+               target.x * (1 - SELECTION_LERP_FACTOR);
+  const newY = current.y * SELECTION_LERP_FACTOR + 
+               target.y * (1 - SELECTION_LERP_FACTOR);
+  
+  setCurrentBounds({ ...current, x: newX, y: newY });
+  
+  requestAnimationFrame(updateSelectionPosition);
+};
+```
+
+This creates a smooth trailing effect rather than instant snapping.
+
+### Visual States
+
+The selection box has different visual states:
+
+**Hover State** (default):
+```typescript
+const OVERLAY_BORDER_COLOR_DEFAULT = "rgba(210, 57, 192, 0.5)";
+const OVERLAY_FILL_COLOR_DEFAULT = "rgba(210, 57, 192, 0.08)";
+```
+
+**Drag State**:
+```typescript
+const OVERLAY_BORDER_COLOR_DRAG = "rgba(210, 57, 192, 0.4)";
+const OVERLAY_FILL_COLOR_DRAG = "rgba(210, 57, 192, 0.05)";
+```
+
+**Frozen State** (after selection):
+```typescript
+const FROZEN_GLOW_COLOR = "rgba(210, 57, 192, 0.15)";
+const FROZEN_GLOW_EDGE_PX = 50;
+```
+
+### Grabbed Boxes
+
+Brief flash effects after successful copy:
+
+```typescript
+const FEEDBACK_DURATION_MS = 1500;
+
+const showTemporaryGrabbedBox = (
+  bounds: OverlayBounds,
+  element: Element
+) => {
+  const boxId = `grabbed-${Date.now()}-${Math.random()}`;
+  const newBox: GrabbedBox = {
+    id: boxId,
+    bounds,
+    createdAt: Date.now(),
+    element,
+  };
+  
+  actions.addGrabbedBox(newBox);
+  
+  setTimeout(() => {
+    actions.removeGrabbedBox(boxId);
+  }, FEEDBACK_DURATION_MS);
+};
+```
+
+### Element Labels
+
+Floating labels display component information:
+
+```typescript
+interface SelectionLabelInstance {
+  id: string;
+  bounds: OverlayBounds;
+  tagName: string;
+  componentName?: string;
+  status: SelectionLabelStatus;
+  mouseX?: number;               // Cursor X position
+  mouseXOffsetRatio?: number;    // Offset from center (-1 to 1)
+  hideArrow?: boolean;
+}
+
+type SelectionLabelStatus = 
+  | "idle"      // Normal hover state
+  | "copying"   // Copy in progress
+  | "copied"    // Copy successful
+  | "fading"    // Fading out
+  | "error";    // Copy failed
+```
+
+### Label Positioning
+
+Labels intelligently position above or below elements:
+
+```typescript
+const LABEL_GAP_PX = 4;
+const VIEWPORT_MARGIN_PX = 8;
+
+const calculateLabelPosition = (
+  bounds: OverlayBounds,
+  labelHeight: number
+): { y: number; arrowPosition: "top" | "bottom" } => {
+  const spaceAbove = bounds.y - VIEWPORT_MARGIN_PX;
+  const spaceBelow = 
+    window.innerHeight - (bounds.y + bounds.height) - VIEWPORT_MARGIN_PX;
+  
+  if (spaceAbove >= labelHeight + LABEL_GAP_PX) {
+    // Position above
+    return {
+      y: bounds.y - labelHeight - LABEL_GAP_PX,
+      arrowPosition: "bottom",
+    };
+  } else {
+    // Position below
+    return {
+      y: bounds.y + bounds.height + LABEL_GAP_PX,
+      arrowPosition: "top",
+    };
+  }
+};
+```
+
+### Arrow Positioning
+
+Labels have arrows that point to the element, positioned based on cursor location:
+
+```typescript
+const ARROW_MIN_SIZE_PX = 4;
+const ARROW_MAX_LABEL_WIDTH_RATIO = 0.2;
+const ARROW_LABEL_MARGIN_PX = 16;
+
+const calculateArrowPosition = (
+  mouseX: number,
+  boundsCenter: number,
+  labelWidth: number
+): { leftPercent: number; leftOffsetPx: number } => {
+  const mouseOffset = mouseX - boundsCenter;
+  const maxOffset = labelWidth / 2 - ARROW_LABEL_MARGIN_PX;
+  const clampedOffset = Math.max(
+    -maxOffset,
+    Math.min(maxOffset, mouseOffset)
+  );
+  
+  return {
+    leftPercent: 50,
+    leftOffsetPx: clampedOffset,
+  };
+};
+```
+
+## Keyboard Navigation
+
+When an element is selected, use arrow keys to navigate:
+
+### Arrow Key Navigation
+
+- **↑ Up**: Select parent element
+- **↓ Down**: Select first child element
+- **← Left**: Select previous sibling
+- **→ Right**: Select next sibling
+
+```typescript
+const ARROW_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
+
+const handleArrowKey = (event: KeyboardEvent) => {
+  if (!ARROW_KEYS.has(event.key)) return;
+  
+  event.preventDefault();
+  const current = selectionElement();
+  if (!current) return;
+  
+  let next: Element | null = null;
+  
+  switch (event.key) {
+    case "ArrowUp":
+      next = current.parentElement;
+      break;
+    case "ArrowDown":
+      next = current.firstElementChild;
+      break;
+    case "ArrowLeft":
+      next = current.previousElementSibling;
+      break;
+    case "ArrowRight":
+      next = current.nextElementSibling;
+      break;
+  }
+  
+  if (next && isValidGrabbableElement(next)) {
+    actions.setDetectedElement(next);
+  }
+};
+```
+
+### Navigation History
+
+```typescript
+const MAX_ARROW_NAVIGATION_HISTORY = 50;
+
+const navigationHistory: Element[] = [];
+
+const addToNavigationHistory = (element: Element) => {
+  navigationHistory.push(element);
+  
+  if (navigationHistory.length > MAX_ARROW_NAVIGATION_HISTORY) {
+    navigationHistory.shift();
+  }
+};
+```
+
+## Copy Workflow
+
+### Single Element Copy
+
+1. Hover over element → selection box appears
+2. Press **Enter** or **Click** → copy starts
+3. Label shows "copying" status → API call in progress
+4. Label shows "copied" status → success feedback
+5. Grabbed box flashes briefly → visual confirmation
+
+### Multi-Element Copy
+
+1. Click and drag → drag box appears
+2. Preview boxes show selected elements
+3. Release mouse → selection freezes
+4. Label shows count (e.g., "3 elements")
+5. Press **Enter** or **Click** → copy all
+6. Multiple grabbed boxes flash → all copied
+
+## Performance Considerations
+
+### Bounds Caching
+
+```typescript
+const BOUNDS_CACHE_TTL_MS = 16;
+const boundsCache = new WeakMap<Element, { bounds: OverlayBounds; timestamp: number }>();
+
+const getCachedBounds = (element: Element): OverlayBounds => {
+  const cached = boundsCache.get(element);
+  const now = Date.now();
+  
+  if (cached && now - cached.timestamp < BOUNDS_CACHE_TTL_MS) {
+    return cached.bounds;
+  }
+  
+  const bounds = createElementBounds(element);
+  boundsCache.set(element, { bounds, timestamp: now });
+  return bounds;
+};
+```
+
+### Bounds Revalidation
+
+Periodically revalidate bounds for scroll/resize:
+
+```typescript
+const BOUNDS_RECALC_INTERVAL_MS = 100;
+
+createEffect(() => {
+  const element = store.detectedElement;
+  if (!element) return;
+  
+  const intervalId = setInterval(() => {
+    if (!isElementConnected(element)) {
+      actions.setDetectedElement(null);
+    }
+  }, BOUNDS_RECALC_INTERVAL_MS);
+  
+  onCleanup(() => clearInterval(intervalId));
+});
+```
+
+### Viewport Version Tracking
+
+Invalidate bounds on scroll/resize:
+
+```typescript
+const [viewportVersion, setViewportVersion] = createSignal(0);
+
+window.addEventListener("scroll", () => {
+  setViewportVersion((v) => v + 1);
+});
+
+window.addEventListener("resize", () => {
+  setViewportVersion((v) => v + 1);
+});
+
+const selectionBounds = createMemo((): OverlayBounds | undefined => {
+  void viewportVersion(); // Subscribe to viewport changes
+  
+  const element = selectionElement();
+  if (!element) return undefined;
+  
+  return createElementBounds(element);
+});
+```

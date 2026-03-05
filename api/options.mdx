@@ -1,0 +1,369 @@
+---
+title: "Options"
+description: "Configuration options for React Grab"
+---
+
+## Overview
+
+The `Options` interface defines the configuration options you can pass to the `init()` function to customize React Grab's behavior.
+
+## Type Definition
+
+```typescript
+interface Options {
+  enabled?: boolean;
+  activationMode?: ActivationMode;
+  keyHoldDuration?: number;
+  allowActivationInsideInput?: boolean;
+  maxContextLines?: number;
+  activationKey?: ActivationKey;
+  getContent?: (elements: Element[]) => Promise<string> | string;
+  freezeReactUpdates?: boolean;
+}
+```
+
+## Properties
+
+### enabled
+
+<ParamField path="enabled" type="boolean" default="true">
+  Whether React Grab is enabled on initialization.
+</ParamField>
+
+**Description:**
+- When `false`, `init()` returns a no-op API where all methods are safe to call but perform no actions
+- Useful for conditionally disabling React Grab in production or specific environments
+- Cannot be changed after initialization via `setOptions()` - use `api.setEnabled()` instead
+
+**Example:**
+```typescript
+const api = init({
+  enabled: process.env.NODE_ENV === 'development'
+});
+```
+
+---
+
+### activationMode
+
+<ParamField path="activationMode" type="'toggle' | 'hold'" default="'toggle'">
+  Controls how React Grab is activated.
+</ParamField>
+
+**Values:**
+- `'toggle'`: Press the activation key once to activate, press again to deactivate
+- `'hold'`: Hold the activation key to activate, release to deactivate
+
+**Example:**
+```typescript
+const api = init({
+  activationMode: 'hold'
+});
+```
+
+**Notes:**
+- In `'toggle'` mode, React Grab stays active until explicitly deactivated
+- In `'hold'` mode, you must continuously hold the activation key
+
+---
+
+### keyHoldDuration
+
+<ParamField path="keyHoldDuration" type="number" default="120">
+  Duration in milliseconds to hold the activation key before activation.
+</ParamField>
+
+**Description:**
+- Prevents accidental activation when using the keyboard for normal copy operations
+- Only applies when the activation key is initially pressed
+- Minimum recommended value: `100`ms
+
+**Example:**
+```typescript
+const api = init({
+  keyHoldDuration: 200 // Require 200ms hold
+});
+```
+
+**Notes:**
+- If you press and release the key before this duration, normal copy behavior occurs
+- If you hold for longer than this duration, React Grab activates
+
+---
+
+### allowActivationInsideInput
+
+<ParamField path="allowActivationInsideInput" type="boolean" default="true">
+  Whether to allow activation when focus is inside an input field.
+</ParamField>
+
+**Description:**
+- When `true`, React Grab can be activated even when an input, textarea, or contenteditable element is focused
+- When `false`, activation is blocked in these contexts to avoid interfering with normal text editing
+
+**Example:**
+```typescript
+const api = init({
+  allowActivationInsideInput: false
+});
+```
+
+---
+
+### maxContextLines
+
+<ParamField path="maxContextLines" type="number" default="3">
+  Maximum number of surrounding context lines to include when copying elements.
+</ParamField>
+
+**Description:**
+- Controls how much surrounding code is included in the copied snippet
+- Higher values provide more context but result in longer snippets
+- Set to `0` to include only the element itself
+
+**Example:**
+```typescript
+const api = init({
+  maxContextLines: 5
+});
+```
+
+**Example Output:**
+
+With `maxContextLines: 3`:
+```jsx
+<Container>
+  <Header />
+  <Button>Click me</Button> {/* Selected element */}
+  <Footer />
+</Container>
+```
+
+With `maxContextLines: 0`:
+```jsx
+<Button>Click me</Button> {/* Only the selected element */}
+```
+
+---
+
+### activationKey
+
+<ParamField path="activationKey" type="ActivationKey" optional>
+  Custom activation key configuration.
+</ParamField>
+
+**Type Definition:**
+```typescript
+type ActivationKey = string | ((event: KeyboardEvent) => boolean);
+```
+
+**Description:**
+- Can be a string representing a keyboard code (e.g., `'KeyG'`, `'KeyC'`)
+- Can be a function that receives a `KeyboardEvent` and returns `true` if it should activate
+- By default, uses `Cmd+C` (Mac) or `Ctrl+C` (Windows/Linux)
+
+**Example - String:**
+```typescript
+const api = init({
+  activationKey: 'KeyG' // Use Cmd+G / Ctrl+G
+});
+```
+
+**Example - Function:**
+```typescript
+const api = init({
+  activationKey: (event) => {
+    // Activate with Cmd+Shift+C / Ctrl+Shift+C
+    return event.code === 'KeyC' && 
+           event.shiftKey && 
+           (event.metaKey || event.ctrlKey);
+  }
+});
+```
+
+**Example - Alt Key:**
+```typescript
+const api = init({
+  activationKey: (event) => {
+    return event.code === 'KeyA' && event.altKey;
+  }
+});
+```
+
+**Notes:**
+- The modifier key (Cmd/Ctrl) is still required unless you override it in a custom function
+- Using a commonly-used key combination may interfere with browser shortcuts
+
+---
+
+### getContent
+
+<ParamField path="getContent" type="(elements: Element[]) => Promise<string> | string" optional>
+  Custom function to generate content when copying elements.
+</ParamField>
+
+**Parameters:**
+- `elements`: Array of selected elements
+
+**Returns:**
+- `string` or `Promise<string>`: The content to copy to clipboard
+
+**Description:**
+- Allows complete customization of copied content
+- Can be synchronous or asynchronous
+- Overrides the default snippet generation behavior
+
+**Example - HTML:**
+```typescript
+const api = init({
+  getContent: (elements) => {
+    return elements.map(el => el.outerHTML).join('\n');
+  }
+});
+```
+
+**Example - JSON:**
+```typescript
+const api = init({
+  getContent: (elements) => {
+    const data = elements.map(el => ({
+      tag: el.tagName.toLowerCase(),
+      id: el.id,
+      classes: Array.from(el.classList),
+      text: el.textContent?.trim()
+    }));
+    return JSON.stringify(data, null, 2);
+  }
+});
+```
+
+**Example - Async:**
+```typescript
+const api = init({
+  getContent: async (elements) => {
+    const snippets = await Promise.all(
+      elements.map(async (el) => {
+        const source = await api.getSource(el);
+        return `${source?.filePath || 'unknown'}:\n${el.outerHTML}`;
+      })
+    );
+    return snippets.join('\n\n');
+  }
+});
+```
+
+---
+
+### freezeReactUpdates
+
+<ParamField path="freezeReactUpdates" type="boolean" default="true">
+  Whether to freeze React state updates while React Grab is active.
+</ParamField>
+
+**Description:**
+- Prevents React components from re-rendering while selecting elements
+- Stops UI changes that could interfere with element selection
+- Uses React Fiber internals to pause component updates
+
+**Example:**
+```typescript
+const api = init({
+  freezeReactUpdates: false // Allow updates during selection
+});
+```
+
+**Notes:**
+- When `true`, animations and state changes are paused during selection
+- When `false`, the UI can change while you're selecting, which may be disorienting
+- Recommended to keep this `true` for best user experience
+
+## SettableOptions
+
+The `SettableOptions` type is identical to `Options` except it excludes the `enabled` property:
+
+```typescript
+interface SettableOptions extends Options {
+  enabled?: never;
+}
+```
+
+**Usage:**
+Used with `api.setOptions()` to update options after initialization:
+
+```typescript
+const api = init();
+
+api.setOptions({
+  activationMode: 'hold',
+  maxContextLines: 5
+});
+
+// Error: Cannot set 'enabled' via setOptions
+// api.setOptions({ enabled: false }); 
+
+// Instead, use:
+api.setEnabled(false);
+```
+
+## Complete Example
+
+Here's a comprehensive example using multiple options:
+
+```typescript
+import { init } from 'react-grab';
+
+const api = init({
+  // Only enable in development
+  enabled: process.env.NODE_ENV === 'development',
+  
+  // Require holding the key
+  activationMode: 'hold',
+  keyHoldDuration: 150,
+  
+  // Use Cmd+G / Ctrl+G instead
+  activationKey: 'KeyG',
+  
+  // Allow activation in inputs
+  allowActivationInsideInput: true,
+  
+  // Include more context
+  maxContextLines: 5,
+  
+  // Freeze React during selection
+  freezeReactUpdates: true,
+  
+  // Custom content generator
+  getContent: async (elements) => {
+    const snippets = await Promise.all(
+      elements.map(async (el) => {
+        const source = await api.getSource(el);
+        const displayName = api.getDisplayName(el);
+        return [
+          `// ${displayName} - ${source?.filePath}:${source?.lineNumber}`,
+          el.outerHTML
+        ].join('\n');
+      })
+    );
+    return snippets.join('\n\n---\n\n');
+  }
+});
+```
+
+## Environment Configuration
+
+You can also configure options via a script tag with `data-react-grab-options`:
+
+```html
+<script 
+  data-react-grab-options='{"activationMode": "hold", "maxContextLines": 5}'
+></script>
+```
+
+These options are merged with options passed to `init()`:
+
+```typescript
+// Script tag options are merged with init() options
+const api = init({
+  keyHoldDuration: 200  // Combined with script tag options
+});
+```
